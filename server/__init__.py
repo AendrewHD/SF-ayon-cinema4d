@@ -2,8 +2,15 @@ from typing import Type
 
 from ayon_server.addons import BaseServerAddon
 
-from .settings import Cinema4DSettings, DEFAULT_VALUES
+from .settings import(
+    Cinema4DSettings,
+    DEFAULT_VALUES
+)
 
+__all__ = (
+    "Cinema4DSettings",
+    "DEFAULT_VALUES"
+)
 
 class Cinema4DAddon(BaseServerAddon):
     settings_model: Type[Cinema4DSettings] = Cinema4DSettings

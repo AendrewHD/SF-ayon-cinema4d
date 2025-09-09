@@ -31,3 +31,11 @@ class Cinema4DImageIOModel(BaseSettingsModel):
         default_factory=ImageIOFileRulesModel,
         title="File Rules"
     )
+
+DEFAULT_IMAGEIO_SETTINGS = {
+    "activate_host_color_management": True,
+    "file_rules": {
+        "activate_host_rules": False,
+        "rules": []
+    }
+}
