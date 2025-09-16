@@ -86,6 +86,7 @@ class CreateReview(plugin.Cinema4DCreator):
             "fps": fps,
             "width": width,
             "height": height,
+            "imageFormat": image_format,
         }
 
     def render_viewport(self, filepath, instance=None):
