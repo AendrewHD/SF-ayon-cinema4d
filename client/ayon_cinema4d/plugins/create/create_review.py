@@ -78,6 +78,7 @@ class CreateReview(plugin.Cinema4DCreator):
         fps = int(round(float(attrib.get("fps", 24))))
         width = int(attrib.get("resolutionWidth", 1920))
         height = int(attrib.get("resolutionHeight", 1080))
+        image_format = attrib.get("imageFormat", "jpg")
 
         return {
             "frame_start": frame_start,
@@ -120,7 +121,10 @@ class CreateReview(plugin.Cinema4DCreator):
             if "reviewWidth" in data:
                 settings["width"] = int(data["reviewWidth"]) 
             if "reviewHeight" in data:
-                settings["height"] = int(data["reviewHeight"]) 
+                settings["height"] = int(data["reviewHeight"])
+            if "imageFormat" in data:
+                if data["imageFormat"] in self.image_format_enum:
+                    settings["imageFormat"] = data["imageFormat"]
 
         exporters.render_playblast(
             filepath,
@@ -129,4 +133,5 @@ class CreateReview(plugin.Cinema4DCreator):
             fps=settings["fps"],
             width=settings["width"],
             height=settings["height"],
+            image_format=settings["imageFormat"],
         )
