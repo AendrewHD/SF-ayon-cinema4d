@@ -11,15 +11,15 @@ FBX_EXPORTER_ID = 1026370
 
 PLAYBLAST_SETTINGS = {
     # Resolution
-    "RDATA_XRES": 1920,
-    "RDATA_YRES": 1080,
+    "RDATA_XRES": 1920.0,
+    "RDATA_YRES": 1080.0,
     "RDATA_LOCKRATIO": True,
     "RDATA_ADAPT_DATARATE": True,
-    "RDATA_PIXELRESOLUTION_VIRTUAL": 72,
-    "RDATA_PIXELRESOLUTIONUNIT": 1,
+    "RDATA_PIXELRESOLUTION_VIRTUAL": 72.0,
+    "RDATA_PIXELRESOLUTIONUNIT": 1.0,
     "RDATA_RENDERREGION": False,
-    "RDATA_FILMASPECT": 1.778,
-    "RDATA_PIXELASPECT": 1,
+    "RDATA_FILMASPECT": 1.0,
+    "RDATA_PIXELASPECT": 1.0,
     # Frame rate and range
     # "RDATA_FRAMERATE": 12,
     # "RDATA_FRAMESEQUENCE": c4d.RDATA_FRAMESEQUENCE_ALLFRAMES,
@@ -372,6 +372,7 @@ def render_playblast(filepath,
                      fps=None,
                      width=1920,
                      height=1080,
+                     file_format="jpg",
                      doc=None):
     """Create a playblast of the given or active document.
 
@@ -390,8 +391,6 @@ def render_playblast(filepath,
     Returns:
         str: The filepath of the rendered movie.
     """
-
-    # Retrieves the current active render settings
     doc = doc or c4d.documents.GetActiveDocument()
     doc_fps = doc.GetFps()
     if fps is None:
@@ -401,23 +400,47 @@ def render_playblast(filepath,
     if frame_end is None:
         frame_end = doc.GetMaxTime().GetFrame(doc_fps)
 
-    renderdata = doc.GetActiveRenderData().GetData()
-    previous_render_engine = renderdata[c4d.RDATA_RENDERENGINE]
-    renderdata[c4d.RDATA_RENDERENGINE] = c4d.RDATA_RENDERENGINE_PREVIEWHARDWARE
+    # Get render settings
+    renderdata = doc.GetFirstRenderData().GetDataInstance()
+    if doc.GetFirstRenderData().GetName() != "Playblast":
+        # Create a new render settings if the current one is not named "Playblast"
+        # to avoid overwriting existing user presets.
+        new_renderdata = c4d.documents.RenderData()
+        new_renderdata.SetName("Playblast")
+        doc.InsertRenderData(new_renderdata)
+        doc.SetActiveRenderData(new_renderdata)
+        renderdata = new_renderdata.GetDataInstance()
+        #return renderdata
+        
+    renderdata.SetInt32(c4d.RDATA_RENDERENGINE,c4d.RDATA_RENDERENGINE_PREVIEWHARDWARE)
 
     # Set render settings
-    for attr, value in PLAYBLAST_SETTINGS.items():
-        renderdata[getattr(c4d, attr)] = value
+    #for attr, value in PLAYBLAST_SETTINGS.items():
+    #    renderdata[getattr(c4d, attr)] = value
 
     # Set FPS and frame range
-    renderdata[c4d.RDATA_FRAMERATE] = fps
+    renderdata[c4d.RDATA_FRAMERATE] = float(fps)
     renderdata[c4d.RDATA_FRAMESEQUENCE] = c4d.RDATA_FRAMESEQUENCE_MANUAL
-    renderdata[c4d.RDATA_FRAMEFROM] = frame_start
-    renderdata[c4d.RDATA_FRAMETO] = frame_end
+    renderdata[c4d.RDATA_FRAMEFROM] = c4d.BaseTime(frame_start/fps)
+    renderdata[c4d.RDATA_FRAMETO] = c4d.BaseTime(frame_end/fps)
+
+    # Set Fileformat
+    if file_format == "jpg":
+        renderdata[c4d.RDATA_FORMAT] = c4d.FILTER_JPG
+    elif file_format == "png":
+        renderdata[c4d.RDATA_FORMAT] = c4d.FILTER_PNG
+    elif file_format == "tif":
+        renderdata[c4d.RDATA_FORMAT] = c4d.FILTER_TIF
+    elif file_format == "tga":
+        renderdata[c4d.RDATA_FORMAT] = c4d.FILTER_TGA
+    elif file_format == "exr":
+        renderdata[c4d.RDATA_FORMAT] = 1016606  # c4d.FILTER_EXR
+    elif file_format == "mp4":
+        renderdata[c4d.RDATA_FORMAT] = 1125 # c4d.FILTER_mp4
 
     # Set resolution
-    renderdata[c4d.RDATA_XRES] = width
-    renderdata[c4d.RDATA_YRES] = height
+    renderdata[c4d.RDATA_XRES] = float(width)
+    renderdata[c4d.RDATA_YRES] = float(height)
 
     renderdata[c4d.RDATA_ALPHACHANNEL] = True
 
@@ -442,8 +465,9 @@ def render_playblast(filepath,
         doc,
         renderdata,
         bmp,
-        c4d.RENDERFLAGS_EXTERNAL | c4d.RENDERFLAGS_NODOCUMENTCLONE,
+        c4d.RENDERFLAGS_EXTERNAL | c4d.RENDERFLAGS_NODOCUMENTCLONE
     )
+    
     if result != c4d.RENDERRESULT_OK:
         raise RenderError(
             "Failed to render {filepath}. (error code: {result})".format(
@@ -451,7 +475,4 @@ def render_playblast(filepath,
             )
         )
 
-    # Switch back to previous render engine,
-    # although this doesn't seem to be needed.
-    renderdata[c4d.RDATA_RENDERENGINE] = previous_render_engine
     return filepath
