@@ -1,0 +1,10 @@
+{
+    "chatgpt.openOnStartup": true,
+    "python.analysis.extraPaths": [
+    "C:/Users/aaulb/AppData/Local/Ynput/AYON/addons/core_1.6.0/ayon_core/vendor/python",
+    "C:/Users/aaulb/AppData/Local/Ynput/AYON/addons/core_1.6.0",
+    "C://Program Files//Maxon Cinema 4D 2025//resource//modules//python//libs//python311",
+    "T:/Area_51/AYON_c4d/ayon-python-api-develop",
+    "T:/Area_51/AYON_c4d/ayon-core-1.6.0"
+    ]
+}

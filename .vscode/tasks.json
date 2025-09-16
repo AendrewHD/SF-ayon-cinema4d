@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "tests:c4dpy",
+      "type": "shell",
+      "command": "\"C:/Program Files/Maxon Cinema 4D 2025/c4dpy.exe\" -m pytest -q",
+      "options": {
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"   // so tests import your repo
+        }
+      },
+      "problemMatcher": []
+    }
+  ]
+}
