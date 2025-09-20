@@ -107,27 +107,27 @@ class CreateReview(plugin.Cinema4DCreator):
                 "AA",
                 label="Anti-Aliasing",
                 items=[
-                    ("off", "Off"),
-                    ("FXAA", "FXAA"),
-                    ("MSAA2x", "MSAA 2x"),
-                    ("MSAA4x", "MSAA 4x"),
-                    ("MSAA8x", "MSAA 8x"),
+                    (0, "Off"),
+                    (1, "FXAA"),
+                    (2, "MSAA 2x"),
+                    (3, "MSAA 4x"),
+                    (4, "MSAA 8x"),
                 ],
-                default="MSAA2x",
+                default=2,
             ),
             EnumDef(
                 "SuperSampling",
                 label="Super Sampling",
                 items=[
-                    ("off", "Off"),
-                    ("2x2", "2x2"),
-                    ("3x3", "3x3"),
-                    ("4x4", "4x4"),
-                    ("5x5", "5x5"),
-                    ("8x8", "8x8"),
-                    ("16x16", "16x16"),
+                    (0, "Off"),
+                    (1, "2x2"),
+                    (2, "3x3"),
+                    (3, "4x4"),
+                    (4, "5x5"),
+                    (5, "8x8"),
+                    (6, "16x16"),
                 ],
-                default="2x2",
+                default=1,
             ),
             # Blank line
             UILabelDef(
@@ -236,33 +236,7 @@ class CreateReview(plugin.Cinema4DCreator):
                 default=False,
             ),
         ]
-
-        #defs.extend(lib.collect_animation_defs(self.create_context, fps=True))
-
         
-        
-        
-        """ defs.extend([
-            EnumDef(
-                "imageFormat",
-                label="Image Format",
-                items=self.image_format_enum,
-                default="jpg",
-            ),
-            NumberDef(
-                "reviewWidth",
-                label="Width",
-                default=int(attrib.get("resolutionWidth", 1920)),
-                decimals=0,
-            ),
-            NumberDef(
-                "reviewHeight",
-                label="Height",
-                default=int(attrib.get("resolutionHeight", 1080)),
-                decimals=0,
-            ),
-        ]) """
-
         return defs
 
     # --- Convenience API -------------------------------------------------
@@ -272,6 +246,7 @@ class CreateReview(plugin.Cinema4DCreator):
         Returns a dict with frame_start, frame_end, fps, width, height derived
         from the current task entity (AYON standards).
         """
+        # Review Settings
         task_entity = self.create_context.get_current_task_entity()
         attrib = task_entity["attrib"]
 
@@ -284,6 +259,30 @@ class CreateReview(plugin.Cinema4DCreator):
         width = int(attrib.get("resolutionWidth", 1920))
         height = int(attrib.get("resolutionHeight", 1080))
         image_format = attrib.get("imageFormat", "jpg")
+        
+        # Effects Settings
+        hw_rendersettings = {
+            "AA" : attrib.get("AA", 2),
+            "SuperSampling" : attrib.get("SuperSampling", 2),
+            "useEffects" : attrib.get("useEffects", True),
+            "useHQNoise" : attrib.get("useHQNoise", False),
+            "useTransparency" : attrib.get("useTransparency", True),
+            "useShadows" : attrib.get("useShadows", False),
+            "useReflections" : attrib.get("useReflections", True),
+            "useSSAO" : attrib.get("useSSAO", False),
+            "useDOF" : attrib.get("useDOF", False),
+            "useGeoOnly" : attrib.get("useGeoOnly", True),
+            "filterGrid" : attrib.get("filterGrid", False),
+            "filterNull" : attrib.get("filterNull", False),
+            "filterSpline" : attrib.get("filterSpline", False),
+            "filterDeformer" : attrib.get("filterDeformer", False),
+            "filterField" : attrib.get("filterField", False),
+            "filterJoint" : attrib.get("filterJoint", False),
+            "filterCamera" : attrib.get("filterCamera", False),
+            "filterLight" : attrib.get("filterLight", False),
+            "filterOther" : attrib.get("filterOther", False),
+            "filterAnimPath" : attrib.get("filterAnimPath", False),
+        }
 
         return {
             "frame_start": frame_start,
@@ -292,6 +291,7 @@ class CreateReview(plugin.Cinema4DCreator):
             "width": width,
             "height": height,
             "imageFormat": image_format,
+            "hw_rendersettings": hw_rendersettings,
         }
 
     def render_viewport(self, filepath, instance=None):
@@ -339,5 +339,6 @@ class CreateReview(plugin.Cinema4DCreator):
             fps=settings["fps"],
             width=settings["width"],
             height=settings["height"],
-            image_format=settings["imageFormat"],
+            file_format=settings["imageFormat"],
+            hw_rendersettings=settings["hw_rendersettings"],
         )

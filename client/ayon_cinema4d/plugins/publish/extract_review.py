@@ -32,6 +32,28 @@ class Cinema4DExtractReview(publish.Extractor):
         width = instance.data.get("reviewWidth")
         height = instance.data.get("reviewHeight")
         fileformat = instance.data.get("imageFormat")
+        hw_rendersettings = {
+            "AA" : instance.data.get("AA", 2),
+            "SuperSampling" : instance.data.get("SuperSampling", 2),
+            "useEffects" : instance.data.get("useEffects", True),
+            "useHQNoise" : instance.data.get("useHQNoise", False),
+            "useTransparency" : instance.data.get("useTransparency", True),
+            "useShadows" : instance.data.get("useShadows", False),
+            "useReflections" : instance.data.get("useReflections", True),
+            "useSSAO" : instance.data.get("useSSAO", False),
+            "useDOF" : instance.data.get("useDOF", False),
+            "useGeoOnly" : instance.data.get("useGeoOnly", True),
+            "filterGrid" : instance.data.get("filterGrid", False),
+            "filterNull" : instance.data.get("filterNull", False),
+            "filterSpline" : instance.data.get("filterSpline", False),
+            "filterDeformer" : instance.data.get("filterDeformer", False),
+            "filterField" : instance.data.get("filterField", False),
+            "filterJoint" : instance.data.get("filterJoint", False),
+            "filterCamera" : instance.data.get("filterCamera", False),
+            "filterLight" : instance.data.get("filterLight", False),
+            "filterOther" : instance.data.get("filterOther", False),
+            "filterAnimPath" : instance.data.get("filterAnimPath", False),
+        }
 
         kwargs = {
             "frame_start": start,
@@ -45,8 +67,10 @@ class Cinema4DExtractReview(publish.Extractor):
             })
         if fileformat is not None:
             kwargs.update({"file_format": fileformat})
+        if hw_rendersettings is not None:
+            kwargs.update({"hw_rendersettings": hw_rendersettings})
 
-        exporters.render_playblast(path, **kwargs)
+        exporters.render_playblast(filepath=path, **kwargs)
         
         # Create the full filename with the extension
         if fileformat == "mp4" or fileformat == "mov":
