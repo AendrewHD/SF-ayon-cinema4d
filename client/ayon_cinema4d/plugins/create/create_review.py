@@ -1,4 +1,10 @@
-from ayon_core.lib import NumberDef, EnumDef
+from ayon_core.lib import (
+    EnumDef,    
+    NumberDef,
+    UILabelDef,
+    UISeparatorDef,
+    BoolDef,
+)
 from ayon_cinema4d.api import (
     lib,
     plugin,
@@ -15,7 +21,6 @@ class CreateReview(plugin.Cinema4DCreator):
     product_type = "review"
     icon = "video-camera"
     render_type = "viewport"
-    
     image_format_enum = [
             "exr", "jpg", "png",
             "tga", "tif", "mp4",
@@ -29,14 +34,215 @@ class CreateReview(plugin.Cinema4DCreator):
         - FPS, width and height default to the current product (task) settings
           so the resulting viewport render matches project standards.
         """
-
+        
         # Collect basic animation attributes including handles and fps
-        defs = lib.collect_animation_defs(self.create_context, fps=True)
-
         # Add resolution controls defaulting to AYON task attributes
+        # UI labels and grouping for clarity
         task_entity = self.create_context.get_current_task_entity()
         attrib = task_entity["attrib"]
-        defs.extend([
+        defs = [
+            UILabelDef(
+                label="Review Settings"
+            ),
+            NumberDef(
+                "reviewWidth",
+                label="Width",
+                default=int(attrib.get("resolutionWidth", 1920)),
+                decimals=0,
+            ),
+            NumberDef(
+                "reviewHeight",
+                label="Height",
+                default=int(attrib.get("resolutionHeight", 1080)),
+                decimals=0,
+            ),
+            # Blank line
+            UILabelDef(
+                label="",
+            ),  
+            NumberDef(
+                "frameStart",
+                label="Frame Start",
+                default=int(attrib.get("frameStart", 1001)),
+            ),
+            NumberDef(
+                "handleStart",
+                label="Handle Start",
+                default=int(attrib.get("handleStart", 0)),
+            ),
+            NumberDef(
+                "frameEnd",
+                label="Frame End",
+                default=int(attrib.get("frameEnd", 1100)),
+            ),
+            NumberDef(
+                "handleEnd",
+                label="Handle End",
+                default=int(attrib.get("handleEnd", 0)),
+            ),
+            # Blank line
+            UILabelDef(
+                label=" ",
+            ), 
+            NumberDef(
+                "fps",
+                label="FPS",
+                default=int(round(float(attrib.get("fps", 24)))),
+            ),
+            # Blank line
+            UILabelDef(
+                label="   ",
+            ),  
+            EnumDef(
+                "imageFormat",
+                label="Image Format",
+                items=self.image_format_enum,
+                default="jpg",
+            ),
+            UISeparatorDef(),
+            UILabelDef(
+                label="Viewport Render Settings"
+            ),
+            EnumDef(
+                "AA",
+                label="Anti-Aliasing",
+                items=[
+                    ("off", "Off"),
+                    ("FXAA", "FXAA"),
+                    ("MSAA2x", "MSAA 2x"),
+                    ("MSAA4x", "MSAA 4x"),
+                    ("MSAA8x", "MSAA 8x"),
+                ],
+                default="MSAA2x",
+            ),
+            EnumDef(
+                "SuperSampling",
+                label="Super Sampling",
+                items=[
+                    ("off", "Off"),
+                    ("2x2", "2x2"),
+                    ("3x3", "3x3"),
+                    ("4x4", "4x4"),
+                    ("5x5", "5x5"),
+                    ("8x8", "8x8"),
+                    ("16x16", "16x16"),
+                ],
+                default="2x2",
+            ),
+            # Blank line
+            UILabelDef(
+                label="    ",
+            ),
+            UILabelDef(
+                label="Effects",
+            ),
+            BoolDef(
+                "useEffects",
+                label="Use Effects",
+                default=True,
+            ),
+            BoolDef(
+                "useHQNoise",
+                label="Use High Quality Noise",
+                default=False,
+            ),
+            BoolDef(
+                "useTransparency",
+                label="Use Transparency",
+                default=True,
+            ),
+            BoolDef(
+                "useShadows",
+                label="Use Shadows",
+                default=False,
+            ),
+            BoolDef(
+                "useReflections",
+                label="Use Reflections",
+                default=True,
+            ),
+            BoolDef(
+                "useSSAO",
+                label="Use SSAO",
+                default=False,
+            ),
+            BoolDef(
+                "useDOF",
+                label="Use Depth of Field",
+                default=False,
+            ),
+            # Blank line
+            UILabelDef(
+                label="     ",
+            ),
+            UILabelDef(
+                label="Filter",
+            ),
+            BoolDef(
+                "useGeoOnly",
+                label="Geometry Only",
+                default=True,
+                is_label_horizontal=False,
+                tooltip="disables all filters below",
+            ),
+            BoolDef(
+                "filterGrid",
+                label="view World Grid",
+                default=False,
+            ),
+            BoolDef(
+                "filterNull",
+                label="view Nulls",
+                default=False,
+            ),
+            BoolDef(
+                "filterSpline",
+                label="view Splines",
+                default=False,
+            ),
+            BoolDef(
+                "filterDeformer",
+                label="view Deformers",
+                default=False,
+            ),
+            BoolDef(
+                "filterField",
+                label="view Fields",
+                default=False,
+            ),
+            BoolDef(
+                "filterJoint",
+                label="view Joints",
+                default=False,
+            ),
+            BoolDef(
+                "filterCamera",
+                label="view Cameras",
+                default=False,
+            ),
+            BoolDef(
+                "filterLight",
+                label="view Lights",
+                default=False,
+            ),
+            BoolDef(
+                "filterOther",
+                label="view Others",
+                default=False,
+            ),
+            BoolDef(
+                "filterAnimPath",
+                label="view Animation Paths",
+                default=False,
+            ),
+        ]
+
+        #defs.extend(lib.collect_animation_defs(self.create_context, fps=True))
+
+        
+        
+        
+        """ defs.extend([
             EnumDef(
                 "imageFormat",
                 label="Image Format",
@@ -55,8 +261,7 @@ class CreateReview(plugin.Cinema4DCreator):
                 default=int(attrib.get("resolutionHeight", 1080)),
                 decimals=0,
             ),
-            
-        ])
+        ]) """
 
         return defs
 
