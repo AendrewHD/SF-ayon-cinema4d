@@ -99,6 +99,12 @@ class CreateReview(plugin.Cinema4DCreator):
                 items=self.image_format_enum,
                 default="jpg",
             ),
+            BoolDef(
+                "useAlpha",
+                label="Use Alpha",
+                default=False,
+                tooltip="not availabe for jpg or mp4 fileformats"
+            ),
             UISeparatorDef(),
             UILabelDef(
                 label="Viewport Render Settings"
@@ -259,6 +265,7 @@ class CreateReview(plugin.Cinema4DCreator):
         width = int(attrib.get("resolutionWidth", 1920))
         height = int(attrib.get("resolutionHeight", 1080))
         image_format = attrib.get("imageFormat", "jpg")
+        alpha = attrib.get("useAlpha", False)
         
         # Effects Settings
         hw_rendersettings = {
@@ -292,6 +299,7 @@ class CreateReview(plugin.Cinema4DCreator):
             "height": height,
             "imageFormat": image_format,
             "hw_rendersettings": hw_rendersettings,
+            "useAlpha": alpha,
         }
 
     def render_viewport(self, filepath, instance=None):

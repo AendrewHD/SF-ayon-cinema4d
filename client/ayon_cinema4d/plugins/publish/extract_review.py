@@ -3,6 +3,7 @@ import c4d
 
 import ayon_core
 from ayon_core.pipeline import publish
+from ayon_core.pipeline.farm.pyblish_functions import get_product_name_and_group_from_template
 from ayon_cinema4d.api import exporters
 
 
@@ -32,6 +33,7 @@ class Cinema4DExtractReview(publish.Extractor):
         width = instance.data.get("reviewWidth")
         height = instance.data.get("reviewHeight")
         fileformat = instance.data.get("imageFormat")
+        alpha = instance.data.get("useAlpha", False)
         hw_rendersettings = {
             "AA" : instance.data.get("AA", 2),
             "SuperSampling" : instance.data.get("SuperSampling", 2),
@@ -77,7 +79,7 @@ class Cinema4DExtractReview(publish.Extractor):
             full_filename = f"{filename}.{fileformat}"
         else:
             full_filename = self.generate_frame_list(filename, start, end, fileformat)
-
+        
         representation = {
             "name": fileformat,
             "ext": fileformat,
@@ -100,11 +102,12 @@ class Cinema4DExtractReview(publish.Extractor):
             file_format (str): The file extension without a dot (e.g., "exr").
 
         Returns:
-            list: A list of formatted filenames (e.g., ["shot_010_render_1001.exr", ...]).
+            frame_list: A list of formatted filenames.
         """
         frame_list = []
         for frame in range(start_frame, end_frame + 1):
             padded_frame = f"{frame:04d}"
             frame_filename = f"{base_filename}{padded_frame}.{file_format}"
             frame_list.append(frame_filename)
+            
         return frame_list
