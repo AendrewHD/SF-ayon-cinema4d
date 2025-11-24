@@ -61,6 +61,7 @@ class Cinema4DExtractReview(publish.Extractor):
             "frame_start": start,
             "frame_end": end,
             "doc": doc,
+            "useAlpha": alpha,
         }
         if width is not None and height is not None:
             kwargs.update({

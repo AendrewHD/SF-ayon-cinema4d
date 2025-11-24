@@ -508,6 +508,7 @@ def set_resolution_from_entity(task_entity, doc=None):
         rd = rd.GetNext()
     c4d.EventAdd()
 
+
 def createPlayblastRenderData():
     """Create a new RenderData object for playblast rendering.
 
