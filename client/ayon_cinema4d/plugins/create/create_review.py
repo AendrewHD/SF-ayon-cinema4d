@@ -349,4 +349,5 @@ class CreateReview(plugin.Cinema4DCreator):
             height=settings["height"],
             file_format=settings["imageFormat"],
             hw_rendersettings=settings["hw_rendersettings"],
+            useAlpha=settings["useAlpha"],
         )

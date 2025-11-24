@@ -448,7 +448,7 @@ def render_playblast(filepath,
         
     # Set Alpha
     if file_format in ("jpg","mp4"):
-        rendersettings[c4d.RDATA_ALPHACHANNEL] = False
+        rendersettings[c4d.RDATA_ALPHACHANNEL] = useAlpha
     else:
         rendersettings[c4d.RDATA_ALPHACHANNEL] = useAlpha
 
