@@ -15,7 +15,7 @@ class CreateReview(plugin.Cinema4DCreator):
     product_type = "review"
     icon = "video-camera"
     render_type = "viewport"
-    
+
     image_format_enum = [
             "exr", "jpg", "png",
             "tga", "tif", "mp4",
@@ -40,22 +40,24 @@ class CreateReview(plugin.Cinema4DCreator):
             EnumDef(
                 "imageFormat",
                 label="Image Format",
+                tooltip="Format of the rendered images/video.",
                 items=self.image_format_enum,
                 default="jpg",
             ),
             NumberDef(
                 "reviewWidth",
                 label="Width",
+                tooltip="Width of the review render. Defaults to project resolution.",
                 default=int(attrib.get("resolutionWidth", 1920)),
                 decimals=0,
             ),
             NumberDef(
                 "reviewHeight",
                 label="Height",
+                tooltip="Height of the review render. Defaults to project resolution.",
                 default=int(attrib.get("resolutionHeight", 1080)),
                 decimals=0,
             ),
-            
         ])
 
         return defs
@@ -120,7 +122,7 @@ class CreateReview(plugin.Cinema4DCreator):
                 settings["fps"] = int(round(float(data["fps"])))
             # Resolution overrides (optional)
             if "reviewWidth" in data:
-                settings["width"] = int(data["reviewWidth"]) 
+                settings["width"] = int(data["reviewWidth"])
             if "reviewHeight" in data:
                 settings["height"] = int(data["reviewHeight"])
             if "imageFormat" in data:
