@@ -2,6 +2,7 @@
 import contextlib
 import math
 import json
+import re
 
 import c4d
 
@@ -9,6 +10,25 @@ from ayon_core.lib import NumberDef
 
 AYON_CONTAINERS = "AYON_CONTAINERS"
 JSON_PREFIX = "JSON::"
+
+
+def sanitize_filename(filename):
+    """Sanitize filename to prevent path traversal and invalid characters.
+
+    Args:
+        filename (str): The filename to sanitize.
+
+    Returns:
+        str: The sanitized filename.
+    """
+    # Replace anything that isn't alphanumeric, underscore, dot or hyphen
+    # with underscore
+    s = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
+    # Ensure it doesn't start with a dot or hyphen to avoid issues
+    s = s.strip(".-")
+    if not s:
+        s = "underscore"
+    return s
 
 
 def collect_animation_defs(create_context, fps=False):

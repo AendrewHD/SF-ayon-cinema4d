@@ -29,7 +29,7 @@ class ExtractAlembic(publish.Extractor):
         nodes = instance[:]
         # Define extract output file path
         dir_path = self.staging_dir(instance)
-        filename = "{0}.abc".format(instance.name)
+        filename = "{0}.abc".format(lib.sanitize_filename(instance.name))
         path = os.path.join(dir_path, filename)
 
         export_nodes = self.filter_objects(nodes)

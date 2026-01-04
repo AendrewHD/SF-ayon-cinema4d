@@ -3,7 +3,7 @@ import c4d
 
 import ayon_core
 from ayon_core.pipeline import publish
-from ayon_cinema4d.api import exporters
+from ayon_cinema4d.api import lib, exporters
 
 
 class Cinema4DExtractReview(publish.Extractor):
@@ -25,7 +25,7 @@ class Cinema4DExtractReview(publish.Extractor):
         # nodes = instance[:]
         # Define extract output file path
         dir_path = self.staging_dir(instance)
-        filename = "{0}".format(instance.name)
+        filename = lib.sanitize_filename(instance.name)
         path = os.path.join(dir_path, filename)
 
         # Export selection to camera
