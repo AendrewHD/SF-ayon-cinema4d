@@ -353,11 +353,27 @@ def iter_objects(root_obj):
 
 def iter_all_children(obj):
     """Yield all children of an object, including grandchildren."""
-    stack = obj.GetChildren()
+    if not obj:
+        return
+
+    stack = []
+    first_child = obj.GetDown()
+    if first_child:
+        stack.append(first_child)
+
     while stack:
         child_obj = stack.pop()
-        stack.extend(child_obj.GetChildren())
         yield child_obj
+
+        # Push next sibling (processed after children)
+        next_sibling = child_obj.GetNext()
+        if next_sibling:
+            stack.append(next_sibling)
+
+        # Push first child (processed immediately)
+        grandchild = child_obj.GetDown()
+        if grandchild:
+            stack.append(grandchild)
 
 
 def get_all_children(obj):
