@@ -2,6 +2,7 @@
 import contextlib
 import math
 import json
+import re
 
 import c4d
 
@@ -521,3 +522,29 @@ def createPlayblastRenderData():
     # Insert the RenderData object into the document
     doc.InsertRenderData(render_data)
     return render_data
+def sanitize_filename(filename, replacement="_"):
+    """Sanitize a filename to be safe for file systems.
+
+    Args:
+        filename (str): The filename to sanitize.
+        replacement (str): The character to replace invalid characters with.
+
+    Returns:
+        str: The sanitized filename.
+    """
+    filename = str(filename)
+    # Remove null bytes
+    filename = filename.replace("\0", "")
+
+    # Replace anything that is not alphanumeric, dash, dot, or underscore
+    # This is a strict whitelist approach
+    cleaned = re.sub(r"[^a-zA-Z0-9_\-\.]", replacement, filename)
+
+    # Remove leading/trailing dots and spaces
+    cleaned = cleaned.strip(" .")
+
+    # Ensure it's not empty
+    if not cleaned:
+        cleaned = "unnamed"
+
+    return cleaned
