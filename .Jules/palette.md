@@ -1,0 +1,3 @@
+## 2024-05-23 - Tooltip Consistency in Plugin Attributes
+**Learning:** UX consistency is key. When some attributes in a form have tooltips and others don't, it creates a confusing experience where users might miss important context for "standard" fields. Even common terms like "Frame Start" benefit from explicit confirmation of what they control (e.g., "The first frame of the animation range").
+**Action:** When defining UI attributes (like `NumberDef`), always check if neighboring fields have tooltips and ensure consistent coverage. Add tooltips even for seemingly obvious fields to provide reassurance and accessibility.

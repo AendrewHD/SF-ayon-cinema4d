@@ -38,10 +38,12 @@ def collect_animation_defs(create_context, fps=False):
     defs = [
         NumberDef("frameStart",
                   label="Frame Start",
+                  tooltip="The first frame of the animation range.",
                   default=frame_start,
                   decimals=0),
         NumberDef("frameEnd",
                   label="Frame End",
+                  tooltip="The last frame of the animation range.",
                   default=frame_end,
                   decimals=0),
         NumberDef("handleStart",
@@ -60,7 +62,11 @@ def collect_animation_defs(create_context, fps=False):
         doc = active_document()
         current_fps = doc.GetFps()
         fps_def = NumberDef(
-            "fps", label="FPS", default=current_fps, decimals=5
+            "fps",
+            label="FPS",
+            tooltip="Frames per second for the animation.",
+            default=current_fps,
+            decimals=5
         )
         defs.append(fps_def)
 
