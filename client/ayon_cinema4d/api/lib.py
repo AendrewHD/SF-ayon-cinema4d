@@ -38,10 +38,12 @@ def collect_animation_defs(create_context, fps=False):
     defs = [
         NumberDef("frameStart",
                   label="Frame Start",
+                  tooltip="Start frame of the animation (without handles).",
                   default=frame_start,
                   decimals=0),
         NumberDef("frameEnd",
                   label="Frame End",
+                  tooltip="End frame of the animation (without handles).",
                   default=frame_end,
                   decimals=0),
         NumberDef("handleStart",
