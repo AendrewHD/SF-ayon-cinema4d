@@ -2,6 +2,7 @@
 import contextlib
 import math
 import json
+import re
 
 import c4d
 
@@ -9,6 +10,37 @@ from ayon_core.lib import NumberDef
 
 AYON_CONTAINERS = "AYON_CONTAINERS"
 JSON_PREFIX = "JSON::"
+
+
+def sanitize_filename(filename, replacement="_"):
+    """Sanitize a filename to be safe for use in a file path.
+
+    Arguments:
+        filename (str): The filename to sanitize.
+        replacement (str): The string to replace invalid characters with.
+
+    Returns:
+        str: The sanitized filename.
+    """
+    if not filename:
+        return replacement
+
+    # Define invalid characters for Windows and Unix
+    # < > : " / \ | ? *
+    # Also remove control characters
+    invalid_chars_pattern = r'[<>:"/\\|?*\x00-\x1f]'
+
+    # Replace invalid characters
+    sanitized = re.sub(invalid_chars_pattern, replacement, filename)
+
+    # Also strip leading/trailing whitespace and dots which can be problematic
+    sanitized = sanitized.strip(" .")
+
+    # Ensure the filename is not empty
+    if not sanitized:
+        sanitized = replacement
+
+    return sanitized
 
 
 def collect_animation_defs(create_context, fps=False):
