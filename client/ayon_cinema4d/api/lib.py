@@ -2,6 +2,7 @@
 import contextlib
 import math
 import json
+import re
 
 import c4d
 
@@ -115,6 +116,15 @@ def undo_chunk():
         yield
     finally:
         doc.EndUndo()
+
+
+def sanitize_filename(filename):
+    """Sanitize filename to be safe for all filesystems.
+
+    Replaces non-alphanumeric characters (except .-_) with underscores.
+    """
+    # Replace unsafe characters with underscore
+    return re.sub(r'[^\w.-]', '_', filename)
 
 
 def get_unique_namespace(folder_name, prefix=None, suffix=None, doc=None):

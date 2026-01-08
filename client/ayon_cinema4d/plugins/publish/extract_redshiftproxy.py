@@ -27,7 +27,7 @@ class ExtractRedshiftProxy(publish.Extractor):
 
         # Add the `_` suffix because Redshift Proxy export will add the
         # frame numbers to the file names before the extension.
-        filename = "{0}_.rs".format(instance.name)
+        filename = "{0}_.rs".format(lib.sanitize_filename(instance.name))
         path = os.path.join(dir_path, filename)
 
         # TODO: Set the document timeline to 'fit' the extra frame start and
