@@ -352,12 +352,27 @@ def iter_objects(root_obj):
 
 
 def iter_all_children(obj):
-    """Yield all children of an object, including grandchildren."""
-    stack = obj.GetChildren()
-    while stack:
-        child_obj = stack.pop()
-        stack.extend(child_obj.GetChildren())
-        yield child_obj
+    """Yield all children of an object, including grandchildren.
+
+    This uses a pointer-based traversal (GetDown/GetNext) to avoid
+    allocating lists of children (O(N) memory) which GetChildren() does.
+
+    Note:
+        - Iteration is Top-Down, First-Sibling-First.
+        - Do not modify the hierarchy (add/remove objects) while iterating.
+    """
+    curr = obj.GetDown()
+    while curr:
+        yield curr
+
+        if curr.GetDown():
+            curr = curr.GetDown()
+            continue
+
+        while not curr.GetNext() and curr.GetUp() and curr.GetUp() != obj:
+            curr = curr.GetUp()
+
+        curr = curr.GetNext()
 
 
 def get_all_children(obj):
