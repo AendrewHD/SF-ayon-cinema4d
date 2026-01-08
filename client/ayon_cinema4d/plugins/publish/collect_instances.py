@@ -19,8 +19,7 @@ class CollectInstances(pyblish.api.InstancePlugin):
 
         members_hierarchy = set(members)
         if instance.data.get("includeParentHierarchy", True):
-            parents = self.get_all_parents(members)
-            members_hierarchy.update(parents)
+            self.add_parents(members, members_hierarchy)
 
         # Store members hierarchy
         instance[:] = list(members_hierarchy)
@@ -55,24 +54,23 @@ class CollectInstances(pyblish.api.InstancePlugin):
 
         instance.data["label"] = label
 
-    def get_all_parents(self, nodes):
-        """Get all parents by using string operations (optimization)
+    def add_parents(self, nodes, hierarchy_set):
+        """Add parents of nodes to hierarchy_set.
+
+        Stops climbing the hierarchy if a parent is already present in the set.
+        This optimizes performance by avoiding redundant traversals.
 
         Args:
-            nodes (list): the nodes which are found in the objectSet
-
-        Returns:
-            list
+            nodes (list): The starting nodes.
+            hierarchy_set (set): The set to add parents to.
         """
-
-        parents = []
         for node in nodes:
             parent = node.GetUp()
             while parent:
-                parents.append(parent)
+                if parent in hierarchy_set:
+                    break
+                hierarchy_set.add(parent)
                 parent = parent.GetUp()
-
-        return parents
 
     def creator_attributes_to_instance_data(self, instance):
         creator_attributes = instance.data.get("creator_attributes", {})
