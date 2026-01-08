@@ -40,18 +40,21 @@ class CreateReview(plugin.Cinema4DCreator):
             EnumDef(
                 "imageFormat",
                 label="Image Format",
+                tooltip="The file format for the review render.",
                 items=self.image_format_enum,
                 default="jpg",
             ),
             NumberDef(
                 "reviewWidth",
                 label="Width",
+                tooltip="Width of the review render. Defaults to task resolution.",
                 default=int(attrib.get("resolutionWidth", 1920)),
                 decimals=0,
             ),
             NumberDef(
                 "reviewHeight",
                 label="Height",
+                tooltip="Height of the review render. Defaults to task resolution.",
                 default=int(attrib.get("resolutionHeight", 1080)),
                 decimals=0,
             ),
