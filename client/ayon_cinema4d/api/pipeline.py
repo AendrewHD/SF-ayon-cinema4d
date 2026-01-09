@@ -15,6 +15,7 @@ from ayon_core.pipeline import (
     get_current_task_name,
     register_loader_plugin_path,
     register_creator_plugin_path,
+    register_inventory_action_path,
     AYON_CONTAINER_ID,
 )
 from .workio import (
@@ -57,8 +58,14 @@ class Cinema4DHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         register_loader_plugin_path(LOAD_PATH)
         register_creator_plugin_path(CREATE_PATH)
-        # TODO: Register only when any inventory actions are created
-        # register_inventory_action_path(INVENTORY_PATH)
+
+        if os.path.isdir(INVENTORY_PATH) and any(
+            os.path.isfile(os.path.join(INVENTORY_PATH, filename))
+            for filename in os.listdir(INVENTORY_PATH)
+            if filename.endswith(".py")
+        ):
+            register_inventory_action_path(INVENTORY_PATH)
+
         self.log.info(PUBLISH_PATH)
 
         register_event_callback("taskChanged", on_task_changed)
