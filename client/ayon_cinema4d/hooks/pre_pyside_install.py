@@ -20,14 +20,11 @@ class InstallPySideToCinema4D(PreLaunchHook):
     launch_types = {LaunchTypes.local}
 
     def execute(self):
-        # TODO: Enable this when we find a way to make it faster
-        return
         # Prelaunch hook is not crucial
         try:
-            # TODO: Add setting to enable/disable this
-            # settings = self.data["project_settings"][self.host_name]
-            # if not settings["hooks"]["InstallPySideToCinema4d"]["enabled"]:
-            #     return
+            settings = self.data["project_settings"][self.host_name]
+            if not settings["hooks"]["InstallPySideToCinema4D"]["enabled"]:
+                return
             self.inner_execute()
         except Exception:
             self.log.warning(
