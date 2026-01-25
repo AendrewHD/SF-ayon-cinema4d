@@ -106,20 +106,6 @@ class Cinema4DExtractReview(publish.Extractor):
             if first_alpha_file and os.path.exists(os.path.join(dir_path, first_alpha_file)):
                 alpha_exists = True
 
-            if alpha_exists:
-                if isinstance(full_filename, list):
-                    if isinstance(full_alpha_filename, list):
-                        full_filename.extend(full_alpha_filename)
-                    else:
-                        full_filename.append(full_alpha_filename)
-                else:
-                    # if full_filename is string, make it a list
-                    full_filename = [full_filename]
-                    if isinstance(full_alpha_filename, list):
-                        full_filename.extend(full_alpha_filename)
-                    else:
-                        full_filename.append(full_alpha_filename)
-
         representation = {
             "name": fileformat,
             "ext": fileformat,
@@ -128,6 +114,16 @@ class Cinema4DExtractReview(publish.Extractor):
         }
         representation["tags"] = ["review", "preview", "ftrackreview"]
         instance.data.setdefault("representations", []).append(representation)
+
+        if alpha_exists:
+            representation_alpha = {
+                "name": f"{fileformat}_alpha",
+                "ext": fileformat,
+                "files": full_alpha_filename,
+                "stagingDir": dir_path,
+            }
+            representation_alpha["tags"] = ["review", "preview", "ftrackreview"]
+            instance.data["representations"].append(representation_alpha)
 
         self.log.info(f"Extracted instance '{instance.name}' to: {path}.{fileformat}")
 

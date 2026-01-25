@@ -352,22 +352,12 @@ def iter_objects(root_obj):
 
 
 def iter_all_children(obj):
-    """Yield all children of an object, including grandchildren.
-
-    Optimized to traverse using GetDown/GetNext/GetUp to avoid list allocations
-    from GetChildren().
-    """
-    child = obj.GetDown()
-    while child:
-        yield child
-        if child.GetDown():
-            child = child.GetDown()
-        else:
-            while not child.GetNext():
-                child = child.GetUp()
-                if child == obj:
-                    return
-            child = child.GetNext()
+    """Yield all children of an object, including grandchildren."""
+    stack = obj.GetChildren()
+    while stack:
+        child_obj = stack.pop()
+        stack.extend(child_obj.GetChildren())
+        yield child_obj
 
 
 def get_all_children(obj):
