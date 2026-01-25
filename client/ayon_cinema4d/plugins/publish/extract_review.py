@@ -86,6 +86,8 @@ class Cinema4DExtractReview(publish.Extractor):
         else:
             full_filename = self.generate_frame_list(filename, start, end, fileformat)
 
+        alpha_exists = False
+        full_alpha_filename = None
         if alpha:
             alpha_filename = f"a_{filename}"
             if fileformat == "mp4" or fileformat == "mov":
@@ -95,7 +97,6 @@ class Cinema4DExtractReview(publish.Extractor):
                     alpha_filename, start, end, fileformat
                 )
 
-            alpha_exists = False
             first_alpha_file = None
             if isinstance(full_alpha_filename, list):
                 if full_alpha_filename:
@@ -122,6 +123,7 @@ class Cinema4DExtractReview(publish.Extractor):
                 "files": full_alpha_filename,
                 "stagingDir": dir_path,
                 "output": "alpha",
+                "data": {"output": "alpha"},
             }
             representation_alpha["tags"] = ["review", "preview", "ftrackreview"]
             instance.data["representations"].append(representation_alpha)
