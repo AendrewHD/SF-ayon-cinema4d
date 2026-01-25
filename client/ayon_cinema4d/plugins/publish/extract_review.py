@@ -121,6 +121,7 @@ class Cinema4DExtractReview(publish.Extractor):
                 "ext": fileformat,
                 "files": full_alpha_filename,
                 "stagingDir": dir_path,
+                "output": "alpha",
             }
             representation_alpha["tags"] = ["review", "preview", "ftrackreview"]
             instance.data["representations"].append(representation_alpha)
