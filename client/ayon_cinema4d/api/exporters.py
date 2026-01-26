@@ -508,16 +508,38 @@ def render_playblast(filepath,
 
             generated_files = os.listdir(temp_dir)
             if not generated_files:
-                raise RenderError(f"Render reported success, but no files found in {temp_dir}")
+                # Double check rendersettings
+                save_image = renderdata[c4d.RDATA_SAVEIMAGE]
+                global_save = renderdata[c4d.RDATA_GLOBALSAVE]
+                raise RenderError(
+                    f"Render reported success, but no files found in {temp_dir}. "
+                    f"RDATA_SAVEIMAGE={save_image}, RDATA_GLOBALSAVE={global_save}"
+                )
 
             is_movie = file_format in ["mp4", "mov", "avi"]
 
             for f in generated_files:
+                # If we only have one file and it doesn't match the prefix, but we expect a movie
+                # or single frame, we might want to be lenient.
+                # However, for now, let's stick to the prefix check but log what we found if it fails.
                 if not f.startswith(temp_name):
-                    continue
+                    log.warning(f"Found unexpected file in temp dir: {f} (expected prefix: {temp_name})")
+                    # If it's the only file there, assume it is the render
+                    if len(generated_files) == 1:
+                        log.warning(f"Assuming {f} is the correct render artifact despite naming mismatch.")
+                    else:
+                        continue
 
                 src_path = os.path.join(temp_dir, f)
-                suffix = f[len(temp_name):] # e.g. "0000.jpg" or ".mp4"
+
+                # Determine suffix
+                # If the file starts with the temp_name, strip it.
+                # If we are in the "fallback" mode (single file, wrong name), take the extension.
+                if f.startswith(temp_name):
+                    suffix = f[len(temp_name):] # e.g. "0000.jpg" or ".mp4"
+                else:
+                    _, ext = os.path.splitext(f)
+                    suffix = ext
 
                 if is_movie:
                     # For movies, we expect the destination filename to already include the extension
