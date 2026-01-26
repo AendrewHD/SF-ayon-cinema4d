@@ -118,11 +118,12 @@ class Cinema4DExtractReview(publish.Extractor):
 
         if alpha_exists:
             representation_alpha = {
-                "name": f"{fileformat}_alpha",
+                "name": "alpha",
                 "ext": fileformat,
                 "files": full_alpha_filename,
                 "stagingDir": dir_path,
                 "output": "alpha",
+                "outputName": "alpha",
                 "data": {"output": "alpha"},
             }
             representation_alpha["tags"] = ["review", "preview", "ftrackreview"]
