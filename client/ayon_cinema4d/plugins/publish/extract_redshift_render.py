@@ -92,7 +92,7 @@ class ExtractRedshiftRender(publish.Extractor):
 
             # Explicitly force update the RenderData object with modified container
             rd.SetData(rd_data)
-            rd.Update(doc)
+            rd.Message(c4d.MSG_UPDATE)
 
             # Iterate frames
             # frame_start and frame_end are inclusive
