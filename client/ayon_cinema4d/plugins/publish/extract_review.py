@@ -123,7 +123,7 @@ class Cinema4DExtractReview(publish.Extractor):
                 alpha_exists = True
 
         representation = {
-            "name": "review",
+            "name": fileformat,
             "ext": fileformat,
             "files": full_filename,
             "stagingDir": dir_path,
