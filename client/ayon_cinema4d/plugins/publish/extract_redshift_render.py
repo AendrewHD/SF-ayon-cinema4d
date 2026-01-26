@@ -66,32 +66,31 @@ class ExtractRedshiftRender(publish.Extractor):
              ms = None
 
         try:
-            rd_data = rd.GetDataInstance()
+            # Modify the RenderData Object Directly
 
             # Set Renderer to Redshift
-            rd_data[c4d.RDATA_RENDERENGINE] = REDSHIFT_RENDERER_ID
+            rd[c4d.RDATA_RENDERENGINE] = REDSHIFT_RENDERER_ID
 
             # Set Resolution
-            rd_data[c4d.RDATA_XRES] = float(width)
-            rd_data[c4d.RDATA_YRES] = float(height)
+            rd[c4d.RDATA_XRES] = float(width)
+            rd[c4d.RDATA_YRES] = float(height)
 
             # Set Format
             c4d_format = self.get_c4d_format(image_format)
-            rd_data[c4d.RDATA_FORMAT] = c4d_format
+            rd[c4d.RDATA_FORMAT] = c4d_format
 
             # Set Output Path
             # We use a folder per render to easily collect AOVs
             # C4D/Redshift appends frame numbers, so we provide the prefix.
             output_path_prefix = os.path.join(staging_dir, filename_base)
-            rd_data[c4d.RDATA_PATH] = output_path_prefix
-            rd_data[c4d.RDATA_SAVEIMAGE] = True
-            rd_data[c4d.RDATA_GLOBALSAVE] = True
+            rd[c4d.RDATA_PATH] = output_path_prefix
+            rd[c4d.RDATA_SAVEIMAGE] = True
+            rd[c4d.RDATA_GLOBALSAVE] = True
 
             # Force frame sequence manual to allow frame-by-frame control if needed
-            rd_data[c4d.RDATA_FRAMESEQUENCE] = c4d.RDATA_FRAMESEQUENCE_MANUAL
+            rd[c4d.RDATA_FRAMESEQUENCE] = c4d.RDATA_FRAMESEQUENCE_MANUAL
 
-            # Explicitly force update the RenderData object with modified container
-            rd.SetData(rd_data)
+            # Update the object
             rd.Message(c4d.MSG_UPDATE)
 
             # Iterate frames
@@ -102,21 +101,24 @@ class ExtractRedshiftRender(publish.Extractor):
                 # Set frame for this render pass
                 # RDATA_FRAMEFROM/TO expect BaseTime
                 bt = c4d.BaseTime(frame, fps)
-                rd_data[c4d.RDATA_FRAMEFROM] = bt
-                rd_data[c4d.RDATA_FRAMETO] = bt
+                rd[c4d.RDATA_FRAMEFROM] = bt
+                rd[c4d.RDATA_FRAMETO] = bt
 
-                # Re-apply updated time settings to the object
-                rd.SetData(rd_data)
+                # Update time settings on the object
+                rd.Message(c4d.MSG_UPDATE)
 
                 # Render using RenderDocument
                 # We pass the Container of the Active Render Data (which is `rd`)
                 # RenderDocument(doc, settings, bmp, flags)
                 # Since we set `rd` as active, passing its container should trigger correct VideoPost execution
+
+                # IMPORTANT: Removing RENDERFLAGS_NODOCUMENTCLONE allows C4D to handle the scene translation
+                # which might be critical for Redshift to pick up the active render data settings correctly.
                 res = c4d.documents.RenderDocument(
                     doc,
-                    rd_data,
+                    rd.GetData(),
                     bmp,
-                    c4d.RENDERFLAGS_EXTERNAL | c4d.RENDERFLAGS_NODOCUMENTCLONE
+                    c4d.RENDERFLAGS_EXTERNAL
                 )
 
                 if res != c4d.RENDERRESULT_OK:
