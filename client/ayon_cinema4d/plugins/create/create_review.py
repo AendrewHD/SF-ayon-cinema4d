@@ -1,12 +1,11 @@
 from ayon_core.lib import (
-    EnumDef,    
+    EnumDef,
     NumberDef,
     UILabelDef,
     UISeparatorDef,
     BoolDef,
 )
 from ayon_cinema4d.api import (
-    lib,
     plugin,
     exporters,
 )
@@ -97,7 +96,7 @@ class CreateReview(plugin.Cinema4DCreator):
                 "imageFormat",
                 label="Image Format",
                 items=self.image_format_enum,
-                default="jpg",
+                default="mp4",
             ),
             BoolDef(
                 "useAlpha",

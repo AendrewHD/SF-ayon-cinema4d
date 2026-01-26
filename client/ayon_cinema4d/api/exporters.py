@@ -1,6 +1,8 @@
 import json
 import logging
 import os
+import shutil
+import tempfile
 
 import c4d
 
@@ -433,6 +435,11 @@ def render_playblast(filepath,
     rendersettings[c4d.RDATA_FRAMEFROM] = c4d.BaseTime(frame_start/fps)
     rendersettings[c4d.RDATA_FRAMETO] = c4d.BaseTime(frame_end/fps)
 
+    # Ensure saving to disk
+    rendersettings[c4d.RDATA_SAVEIMAGE] = True
+    # Ensure consistent naming (Name0000)
+    rendersettings[c4d.RDATA_NAMEFORMAT] = 0
+
     # Set Fileformat
     if file_format == "jpg":
         rendersettings[c4d.RDATA_FORMAT] = c4d.FILTER_JPG
@@ -456,37 +463,119 @@ def render_playblast(filepath,
     rendersettings[c4d.RDATA_YRES] = float(height)
 
     set_hardware_render_settings(hw_rendersettings=hw_rendersettings, renderdata=renderdata)
-    
-    renderdata[c4d.RDATA_PATH] = filepath
 
-    # initialize bitmap
+    # Initialize bitmap (required by RenderDocument even if rendering externally)
     bmp = c4d.bitmaps.BaseBitmap()
     bmp.Init(x=width, y=height, depth=24)
     if bmp is None:
         raise RenderError(
             "An error occurred during rendering: could not create bitmap."
         )
-        
+
     c4d.StopAllThreads()
     renderdata.SetName(name)
     doc.InsertRenderData(renderdata)
     doc.SetActiveRenderData(renderdata)
     c4d.EventAdd()
 
-    # Renders the document
-    result = c4d.documents.RenderDocument(
-        doc,
-        renderdata.GetDataInstance(),
-        bmp,
-        c4d.RENDERFLAGS_EXTERNAL | c4d.RENDERFLAGS_NODOCUMENTCLONE
-    )
-    
-    if result != c4d.RENDERRESULT_OK:
-        raise RenderError(
-            "Failed to render {filepath}. (error code: {result})".format(
-                filepath=filepath, result=result
+    try:
+        # Use a temporary directory for rendering to ensure control over naming
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_name = "render"
+            temp_path = os.path.join(temp_dir, temp_name)
+            renderdata[c4d.RDATA_PATH] = temp_path
+
+            # Renders the document
+            # We must use RENDERFLAGS_EXTERNAL to ensure C4D handles the full frame sequence
+            # and file saving correctly. Without it, C4D only renders the current frame to the bitmap.
+            # We accept the overhead of the Picture Viewer to guarantee correct output.
+            result = c4d.documents.RenderDocument(
+                doc,
+                renderdata.GetDataInstance(),
+                bmp,
+                c4d.RENDERFLAGS_EXTERNAL | c4d.RENDERFLAGS_NODOCUMENTCLONE
             )
-        )
+
+            if result != c4d.RENDERRESULT_OK:
+                raise RenderError(
+                    "Failed to render {filepath}. (error code: {result})".format(
+                        filepath=filepath, result=result
+                    )
+                )
+
+            # Move and rename generated files to the target destination
+            dest_dir = os.path.dirname(filepath)
+            dest_filename = os.path.basename(filepath)
+            if not os.path.exists(dest_dir):
+                os.makedirs(dest_dir)
+
+            generated_files = os.listdir(temp_dir)
+            if not generated_files:
+                # Double check rendersettings
+                save_image = renderdata[c4d.RDATA_SAVEIMAGE]
+                global_save = renderdata[c4d.RDATA_GLOBALSAVE]
+                raise RenderError(
+                    f"Render reported success, but no files found in {temp_dir}. "
+                    f"RDATA_SAVEIMAGE={save_image}, RDATA_GLOBALSAVE={global_save}"
+                )
+
+            is_movie = file_format in ["mp4", "mov", "avi"]
+
+            for f in generated_files:
+                src_path = os.path.join(temp_dir, f)
+
+                # Check for main render files (prefix match)
+                if f.startswith(temp_name):
+                    suffix = f[len(temp_name):] # e.g. "0000.jpg" or ".mp4"
+                    current_dest_filename = dest_filename
+
+                # Check for separate alpha files (prefix "A_" + temp_name)
+                # C4D naming: A_prefix0000.jpg
+                elif f.startswith(f"A_{temp_name}"):
+                    suffix = f[len(f"A_{temp_name}"):]
+                    # We usually expect alpha to be prefixed with "a_" in destination
+                    # extract_review expects "a_{filename}"
+                    current_dest_filename = f"a_{dest_filename}"
+
+                # Fallback: Single file mismatch handling
+                elif len(generated_files) == 1:
+                    log.warning(f"Found unexpected file in temp dir: {f} (expected prefix: {temp_name})")
+                    log.warning(f"Assuming {f} is the correct render artifact despite naming mismatch.")
+                    _, ext = os.path.splitext(f)
+                    suffix = ext
+                    current_dest_filename = dest_filename
+
+                else:
+                    log.warning(f"Ignoring unexpected file in temp dir: {f} (expected prefix: {temp_name})")
+                    continue
+
+                if is_movie:
+                    # For movies, we expect the destination filename to already include the extension
+                    # (handled by extract_review.py)
+                    # output: reviewMain.mp4
+                    new_name = current_dest_filename
+                else:
+                    # Check if this is a single frame render requesting a specific filename
+                    # (e.g. thumbnail.jpg)
+                    is_single_frame = (frame_start == frame_end)
+                    ext_match = current_dest_filename.lower().endswith(f".{file_format.lower()}")
+
+                    if is_single_frame and ext_match:
+                        # Use destination filename exactly (ignore frame number suffix)
+                        new_name = current_dest_filename
+                    else:
+                        # For sequences (or single frames without explicit extension):
+                        # destination filename is the prefix (e.g. reviewMain)
+                        # output: reviewMain0000.jpg
+                        new_name = current_dest_filename + suffix
+
+                dst_path = os.path.join(dest_dir, new_name)
+                shutil.move(src_path, dst_path)
+                log.info(f"Moved rendered file {src_path} to {dst_path}")
+
+    finally:
+        renderdata.Remove()
+        c4d.EventAdd()
 
     return filepath
 
