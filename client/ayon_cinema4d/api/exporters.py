@@ -433,6 +433,11 @@ def render_playblast(filepath,
     rendersettings[c4d.RDATA_FRAMEFROM] = c4d.BaseTime(frame_start/fps)
     rendersettings[c4d.RDATA_FRAMETO] = c4d.BaseTime(frame_end/fps)
 
+    # Ensure saving to disk
+    rendersettings[c4d.RDATA_SAVEIMAGE] = True
+    # Ensure consistent naming (Name0000)
+    rendersettings[c4d.RDATA_NAMEFORMAT] = 0
+
     # Set Fileformat
     if file_format == "jpg":
         rendersettings[c4d.RDATA_FORMAT] = c4d.FILTER_JPG
@@ -479,7 +484,7 @@ def render_playblast(filepath,
             doc,
             renderdata.GetDataInstance(),
             bmp,
-            c4d.RENDERFLAGS_EXTERNAL | c4d.RENDERFLAGS_NODOCUMENTCLONE
+            c4d.RENDERFLAGS_NODOCUMENTCLONE
         )
     finally:
         renderdata.Remove()
