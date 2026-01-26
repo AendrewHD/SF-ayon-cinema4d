@@ -464,14 +464,6 @@ def render_playblast(filepath,
 
     set_hardware_render_settings(hw_rendersettings=hw_rendersettings, renderdata=renderdata)
 
-    # initialize bitmap
-    bmp = c4d.bitmaps.BaseBitmap()
-    bmp.Init(x=width, y=height, depth=24)
-    if bmp is None:
-        raise RenderError(
-            "An error occurred during rendering: could not create bitmap."
-        )
-
     c4d.StopAllThreads()
     renderdata.SetName(name)
     doc.InsertRenderData(renderdata)
@@ -486,10 +478,12 @@ def render_playblast(filepath,
             renderdata[c4d.RDATA_PATH] = temp_path
 
             # Renders the document
+            # Passing None for bitmap ensures we render to disk (based on RDATA_PATH)
+            # and not just to memory.
             result = c4d.documents.RenderDocument(
                 doc,
                 renderdata.GetDataInstance(),
-                bmp,
+                None,
                 c4d.RENDERFLAGS_NODOCUMENTCLONE
             )
 
