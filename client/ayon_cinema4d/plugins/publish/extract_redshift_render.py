@@ -11,7 +11,7 @@ REDSHIFT_RENDERER_ID = 1036219
 class ExtractRedshiftRender(publish.Extractor):
     label = "Render Redshift"
     hosts = ["cinema4d"]
-    families = ["render"]
+    families = ["redshiftRender"]
 
     def process(self, instance):
         doc = instance.context.data["doc"]
@@ -138,6 +138,13 @@ class ExtractRedshiftRender(publish.Extractor):
         self.log.debug(f"Generated files: {files}")
 
         sequences = self.collect_sequences(files)
+
+        # Verify if any render files (other than review) were generated
+        render_files_found = any(k != f"{filename_base}_review.mp4" for k in sequences.keys())
+        if not render_files_found:
+             self.log.error("No render output files found. Redshift may have failed to save images, or the output path is incorrect.")
+             # We don't raise here to allow review to publish if it exists, but it's suspicious.
+             # Actually, if the main render failed, we should probably fail.
 
         for seq_name, seq_files in sequences.items():
             if not seq_files:

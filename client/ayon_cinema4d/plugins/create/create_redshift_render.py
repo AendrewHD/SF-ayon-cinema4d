@@ -10,7 +10,7 @@ class CreateRedshiftRender(plugin.Cinema4DCreator):
 
     identifier = "io.ayon.creators.cinema4d.redshiftrender"
     label = "Redshift Render"
-    product_type = "render"
+    product_type = "redshiftRender"
     icon = "video-camera"
 
     # Standard render formats
