@@ -123,9 +123,12 @@ class Cinema4DExtractReview(publish.Extractor):
                 alpha_exists = True
 
         tags = ["review"]
-        # Add ftrack tag if ftrack is active (simple check, or just add it as it's harmless)
-        # But to be safe and match Blender, let's keep it if standard practice
-        tags.append("ftrackreview")
+        # Add ftrack tag only if ftrack integration is active to avoid potential conflicts
+        if "ftrack" in instance.context.data.get("integrator_names", []):
+            tags.append("ftrackreview")
+
+        # Mark instance as review to ensure downstream collectors/integrators recognize it
+        instance.data["review"] = True
 
         representation = {
             "name": fileformat,
@@ -133,19 +136,16 @@ class Cinema4DExtractReview(publish.Extractor):
             "files": full_filename,
             "stagingDir": dir_path,
             "tags": tags,
+            # Output name is often used by loaders or transcoders
+            "outputName": fileformat,
         }
 
-        # Add frame metadata only for sequences, or if we are sure it matches.
-        # For simple MP4 review, sometimes less is more.
-        # However, AYON usually benefits from fps.
-        if fileformat not in ["mp4", "mov"]:
-             representation.update({
-                "frameStart": start,
-                "frameEnd": end,
-                "fps": instance.data.get("fps", 25),
-             })
-
-        # 'preview' key is not standard AYON representation data, removing it to be safe.
+        # Add frame metadata for all reviews to assist player context
+        representation.update({
+            "frameStart": start,
+            "frameEnd": end,
+            "fps": instance.data.get("fps", 25),
+        })
 
         instance.data.setdefault("representations", []).append(representation)
 
