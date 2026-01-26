@@ -91,6 +91,16 @@ class Cinema4DExtractReview(publish.Extractor):
         else:
             full_filename = self.generate_frame_list(filename, start, end, fileformat)
 
+        # Check if the file(s) exist
+        if isinstance(full_filename, list):
+            check_file = full_filename[0]
+        else:
+            check_file = full_filename
+
+        full_path = os.path.join(dir_path, check_file)
+        if not os.path.exists(full_path):
+            raise Exception(f"Review extraction failed. Expected file not found: {full_path}")
+
         alpha_exists = False
         full_alpha_filename = None
         if alpha:
