@@ -47,6 +47,7 @@ class ExtractRedshiftRender(publish.Extractor):
 
         # Set our new RD as active so Redshift picks up its VideoPosts
         doc.SetActiveRenderData(rd)
+        c4d.EventAdd() # Ensure context updates
 
         # Initialize Bitmap for capturing render result
         bmp = c4d.bitmaps.BaseBitmap()
@@ -89,6 +90,10 @@ class ExtractRedshiftRender(publish.Extractor):
             # Force frame sequence manual to allow frame-by-frame control if needed
             rd_data[c4d.RDATA_FRAMESEQUENCE] = c4d.RDATA_FRAMESEQUENCE_MANUAL
 
+            # Explicitly force update the RenderData object with modified container
+            rd.SetData(rd_data)
+            rd.Update(doc)
+
             # Iterate frames
             # frame_start and frame_end are inclusive
             for frame in range(int(frame_start), int(frame_end) + 1):
@@ -99,6 +104,9 @@ class ExtractRedshiftRender(publish.Extractor):
                 bt = c4d.BaseTime(frame, fps)
                 rd_data[c4d.RDATA_FRAMEFROM] = bt
                 rd_data[c4d.RDATA_FRAMETO] = bt
+
+                # Re-apply updated time settings to the object
+                rd.SetData(rd_data)
 
                 # Render using RenderDocument
                 # We pass the Container of the Active Render Data (which is `rd`)
@@ -128,6 +136,7 @@ class ExtractRedshiftRender(publish.Extractor):
             # Restore previous active render data
             if prev_active_rd:
                 doc.SetActiveRenderData(prev_active_rd)
+                c4d.EventAdd()
 
             # Clean up the temporary render data
             if rd:
