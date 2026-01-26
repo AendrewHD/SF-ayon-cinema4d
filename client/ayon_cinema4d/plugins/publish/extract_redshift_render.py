@@ -42,6 +42,12 @@ class ExtractRedshiftRender(publish.Extractor):
         # Insert into document so Redshift can find it/it is valid
         doc.InsertRenderData(rd)
 
+        # Determine previous active render data to restore later
+        prev_active_rd = doc.GetActiveRenderData()
+
+        # Set our new RD as active so Redshift picks up its VideoPosts
+        doc.SetActiveRenderData(rd)
+
         # Initialize Bitmap for capturing render result
         bmp = c4d.bitmaps.BaseBitmap()
         bmp.Init(width, height)
@@ -94,11 +100,13 @@ class ExtractRedshiftRender(publish.Extractor):
                 rd_data[c4d.RDATA_FRAMEFROM] = bt
                 rd_data[c4d.RDATA_FRAMETO] = bt
 
-                # Render using the RenderData OBJECT to include VideoPosts
-                # Note: Passing the object instead of container is supported and required for VideoPosts
+                # Render using RenderDocument
+                # We pass the Container of the Active Render Data (which is `rd`)
+                # RenderDocument(doc, settings, bmp, flags)
+                # Since we set `rd` as active, passing its container should trigger correct VideoPost execution
                 res = c4d.documents.RenderDocument(
                     doc,
-                    rd,
+                    rd_data,
                     bmp,
                     c4d.RENDERFLAGS_EXTERNAL | c4d.RENDERFLAGS_NODOCUMENTCLONE
                 )
@@ -116,6 +124,11 @@ class ExtractRedshiftRender(publish.Extractor):
         finally:
             if ms:
                 ms.Close()
+
+            # Restore previous active render data
+            if prev_active_rd:
+                doc.SetActiveRenderData(prev_active_rd)
+
             # Clean up the temporary render data
             if rd:
                 rd.Remove()
