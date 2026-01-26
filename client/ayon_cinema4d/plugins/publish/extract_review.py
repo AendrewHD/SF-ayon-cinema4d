@@ -127,6 +127,10 @@ class Cinema4DExtractReview(publish.Extractor):
             "ext": fileformat,
             "files": full_filename,
             "stagingDir": dir_path,
+            "frameStart": start,
+            "frameEnd": end,
+            "fps": instance.data.get("fps", 25),
+            "preview": True,
             "tags": ["review", "ftrackreview"],
         }
         instance.data.setdefault("representations", []).append(representation)
