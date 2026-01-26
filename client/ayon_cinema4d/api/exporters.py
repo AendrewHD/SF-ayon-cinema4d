@@ -1,6 +1,8 @@
 import json
 import logging
 import os
+import shutil
+import tempfile
 
 import c4d
 
@@ -373,7 +375,10 @@ def render_playblast(filepath,
                      width=1920,
                      height=1080,
                      file_format="jpg",
-                     doc=None):
+                     useAlpha=False,
+                     separate_alpha=False,
+                     doc=None,
+                     hw_rendersettings=None):
     """Create a playblast of the given or active document.
 
     Args:
@@ -385,8 +390,10 @@ def render_playblast(filepath,
         fps (int): Frames per seconds.
         width (int): Resolution width for the render.
         height (int): Resolution height for the render.
+        file_format (str): Image format for the render.
         doc (Optional[c4d.documents.BaseDocument]): Document to operate in.
             Defaults to active document if not set.
+        rendersettings (Optional[dict]): Dictionary of hardware render settings.
 
     Returns:
         str: The filepath of the rendered movie.
@@ -399,58 +406,65 @@ def render_playblast(filepath,
         frame_start = doc.GetMinTime().GetFrame(doc_fps)
     if frame_end is None:
         frame_end = doc.GetMaxTime().GetFrame(doc_fps)
+        
+    #duplicate = False
+    name = "Playblast"
 
     # Get render settings
-    renderdata = doc.GetFirstRenderData().GetDataInstance()
-    if doc.GetFirstRenderData().GetName() != "Playblast":
-        # Create a new render settings if the current one is not named "Playblast"
-        # to avoid overwriting existing user presets.
-        new_renderdata = c4d.documents.RenderData()
-        new_renderdata.SetName("Playblast")
-        doc.InsertRenderData(new_renderdata)
-        doc.SetActiveRenderData(new_renderdata)
-        renderdata = new_renderdata.GetDataInstance()
-        #return renderdata
-        
-    renderdata.SetInt32(c4d.RDATA_RENDERENGINE,c4d.RDATA_RENDERENGINE_PREVIEWHARDWARE)
+    renderdata = doc.GetFirstRenderData()
 
-    # Set render settings
-    #for attr, value in PLAYBLAST_SETTINGS.items():
-    #    renderdata[getattr(c4d, attr)] = value
+    while renderdata:
+        renderdata_next = renderdata.GetNext()
+        if renderdata.GetName() == name:
+            # Found a match, now set it as the active render setting
+            doc.SetActiveRenderData(renderdata)
+            renderdata.Remove()
+            #duplicate = True
+            break
+        renderdata = renderdata_next
+
+    renderdata = c4d.documents.RenderData()
+    
+    rendersettings = renderdata.GetDataInstance()
+
+    rendersettings[c4d.RDATA_RENDERENGINE] = c4d.RDATA_RENDERENGINE_PREVIEWHARDWARE
 
     # Set FPS and frame range
-    renderdata[c4d.RDATA_FRAMERATE] = float(fps)
-    renderdata[c4d.RDATA_FRAMESEQUENCE] = c4d.RDATA_FRAMESEQUENCE_MANUAL
-    renderdata[c4d.RDATA_FRAMEFROM] = c4d.BaseTime(frame_start/fps)
-    renderdata[c4d.RDATA_FRAMETO] = c4d.BaseTime(frame_end/fps)
+    rendersettings[c4d.RDATA_FRAMERATE] = float(fps)
+    rendersettings[c4d.RDATA_FRAMESEQUENCE] = c4d.RDATA_FRAMESEQUENCE_MANUAL
+    rendersettings[c4d.RDATA_FRAMEFROM] = c4d.BaseTime(frame_start/fps)
+    rendersettings[c4d.RDATA_FRAMETO] = c4d.BaseTime(frame_end/fps)
+
+    # Ensure saving to disk
+    rendersettings[c4d.RDATA_SAVEIMAGE] = True
+    # Ensure consistent naming (Name0000)
+    rendersettings[c4d.RDATA_NAMEFORMAT] = 0
 
     # Set Fileformat
     if file_format == "jpg":
-        renderdata[c4d.RDATA_FORMAT] = c4d.FILTER_JPG
+        rendersettings[c4d.RDATA_FORMAT] = c4d.FILTER_JPG
     elif file_format == "png":
-        renderdata[c4d.RDATA_FORMAT] = c4d.FILTER_PNG
+        rendersettings[c4d.RDATA_FORMAT] = c4d.FILTER_PNG
     elif file_format == "tif":
-        renderdata[c4d.RDATA_FORMAT] = c4d.FILTER_TIF
+        rendersettings[c4d.RDATA_FORMAT] = c4d.FILTER_TIF
     elif file_format == "tga":
-        renderdata[c4d.RDATA_FORMAT] = c4d.FILTER_TGA
+        rendersettings[c4d.RDATA_FORMAT] = c4d.FILTER_TGA
     elif file_format == "exr":
-        renderdata[c4d.RDATA_FORMAT] = 1016606  # c4d.FILTER_EXR
+        rendersettings[c4d.RDATA_FORMAT] = 1016606  # c4d.FILTER_EXR
     elif file_format == "mp4":
-        renderdata[c4d.RDATA_FORMAT] = 1125 # c4d.FILTER_mp4
+        rendersettings[c4d.RDATA_FORMAT] = 1125 # c4d.FILTER_mp4
+        
+    # Set Alpha
+    rendersettings[c4d.RDATA_ALPHACHANNEL] = useAlpha
+    rendersettings[c4d.RDATA_SEPARATEALPHA] = separate_alpha
 
     # Set resolution
-    renderdata[c4d.RDATA_XRES] = float(width)
-    renderdata[c4d.RDATA_YRES] = float(height)
+    rendersettings[c4d.RDATA_XRES] = float(width)
+    rendersettings[c4d.RDATA_YRES] = float(height)
 
-    renderdata[c4d.RDATA_ALPHACHANNEL] = True
+    set_hardware_render_settings(hw_rendersettings=hw_rendersettings, renderdata=renderdata)
 
-    # TODO: Somehow figure out how to (temporarily) overwrite a video post,
-    #    or add a new one and remove it afterwards.
-    # Set hardware video post
-    # hardware_vp = c4d.documents.BaseVideoPost(c4d.RDATA_RENDERENGINE_PREVIEWHARDWARE)
-    # for k, v in HARDWARE_SETTINGS.items():
-    #     hardware_vp[getattr(c4d, k)] = v
-    # renderdata.InsertVideoPost(hardware_vp)
+    # Initialize bitmap (required by RenderDocument even if rendering externally)
     bmp = c4d.bitmaps.BaseBitmap()
     bmp.Init(x=width, y=height, depth=24)
     if bmp is None:
@@ -458,21 +472,162 @@ def render_playblast(filepath,
             "An error occurred during rendering: could not create bitmap."
         )
 
-    renderdata.SetFilename(c4d.RDATA_PATH, filepath)
+    c4d.StopAllThreads()
+    renderdata.SetName(name)
+    doc.InsertRenderData(renderdata)
+    doc.SetActiveRenderData(renderdata)
+    c4d.EventAdd()
 
-    # Renders the document
-    result = c4d.documents.RenderDocument(
-        doc,
-        renderdata,
-        bmp,
-        c4d.RENDERFLAGS_EXTERNAL | c4d.RENDERFLAGS_NODOCUMENTCLONE
-    )
-    
-    if result != c4d.RENDERRESULT_OK:
-        raise RenderError(
-            "Failed to render {filepath}. (error code: {result})".format(
-                filepath=filepath, result=result
+    try:
+        # Use a temporary directory for rendering to ensure control over naming
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_name = "render"
+            temp_path = os.path.join(temp_dir, temp_name)
+            renderdata[c4d.RDATA_PATH] = temp_path
+
+            # Renders the document
+            # We must use RENDERFLAGS_EXTERNAL to ensure C4D handles the full frame sequence
+            # and file saving correctly. Without it, C4D only renders the current frame to the bitmap.
+            # We accept the overhead of the Picture Viewer to guarantee correct output.
+            result = c4d.documents.RenderDocument(
+                doc,
+                renderdata.GetDataInstance(),
+                bmp,
+                c4d.RENDERFLAGS_EXTERNAL | c4d.RENDERFLAGS_NODOCUMENTCLONE
             )
-        )
+
+            if result != c4d.RENDERRESULT_OK:
+                raise RenderError(
+                    "Failed to render {filepath}. (error code: {result})".format(
+                        filepath=filepath, result=result
+                    )
+                )
+
+            # Move and rename generated files to the target destination
+            dest_dir = os.path.dirname(filepath)
+            dest_filename = os.path.basename(filepath)
+            if not os.path.exists(dest_dir):
+                os.makedirs(dest_dir)
+
+            generated_files = os.listdir(temp_dir)
+            if not generated_files:
+                # Double check rendersettings
+                save_image = renderdata[c4d.RDATA_SAVEIMAGE]
+                global_save = renderdata[c4d.RDATA_GLOBALSAVE]
+                raise RenderError(
+                    f"Render reported success, but no files found in {temp_dir}. "
+                    f"RDATA_SAVEIMAGE={save_image}, RDATA_GLOBALSAVE={global_save}"
+                )
+
+            is_movie = file_format in ["mp4", "mov", "avi"]
+
+            for f in generated_files:
+                src_path = os.path.join(temp_dir, f)
+
+                # Check for main render files (prefix match)
+                if f.startswith(temp_name):
+                    suffix = f[len(temp_name):] # e.g. "0000.jpg" or ".mp4"
+                    current_dest_filename = dest_filename
+
+                # Check for separate alpha files (prefix "A_" + temp_name)
+                # C4D naming: A_prefix0000.jpg
+                elif f.startswith(f"A_{temp_name}"):
+                    suffix = f[len(f"A_{temp_name}"):]
+                    # We usually expect alpha to be prefixed with "a_" in destination
+                    # extract_review expects "a_{filename}"
+                    current_dest_filename = f"a_{dest_filename}"
+
+                # Fallback: Single file mismatch handling
+                elif len(generated_files) == 1:
+                    log.warning(f"Found unexpected file in temp dir: {f} (expected prefix: {temp_name})")
+                    log.warning(f"Assuming {f} is the correct render artifact despite naming mismatch.")
+                    _, ext = os.path.splitext(f)
+                    suffix = ext
+                    current_dest_filename = dest_filename
+
+                else:
+                    log.warning(f"Ignoring unexpected file in temp dir: {f} (expected prefix: {temp_name})")
+                    continue
+
+                if is_movie:
+                    # For movies, we expect the destination filename to already include the extension
+                    # (handled by extract_review.py)
+                    # output: reviewMain.mp4
+                    new_name = current_dest_filename
+                else:
+                    # Check if this is a single frame render requesting a specific filename
+                    # (e.g. thumbnail.jpg)
+                    is_single_frame = (frame_start == frame_end)
+                    ext_match = current_dest_filename.lower().endswith(f".{file_format.lower()}")
+
+                    if is_single_frame and ext_match:
+                        # Use destination filename exactly (ignore frame number suffix)
+                        new_name = current_dest_filename
+                    else:
+                        # For sequences (or single frames without explicit extension):
+                        # destination filename is the prefix (e.g. reviewMain)
+                        # output: reviewMain0000.jpg
+                        new_name = current_dest_filename + suffix
+
+                dst_path = os.path.join(dest_dir, new_name)
+                shutil.move(src_path, dst_path)
+                log.info(f"Moved rendered file {src_path} to {dst_path}")
+
+    finally:
+        renderdata.Remove()
+        c4d.EventAdd()
 
     return filepath
+
+
+def set_hardware_render_settings(hw_rendersettings, renderdata):
+    """Set the hardware render settings for the active document.
+    Args:
+        hw_rendersettings (dict): Dictionary of hardware render settings.
+        renderdata (c4d.documents.RenderData): Render data to apply settings to.
+    Returns: c4d.documents.RenderData
+    """
+    
+    hw_rd = c4d.BaseList2D(c4d.RDATA_RENDERENGINE_PREVIEWHARDWARE)
+    # Effects Settings
+    hw_rd[c4d.VP_PREVIEWHARDWARE_ANTIALIASING] = hw_rendersettings.get("AA", 2)
+    if hw_rendersettings.get("SuperSampling", 2) == 0:
+        hw_rd[c4d.VP_PREVIEWHARDWARE_SUPERSAMPLING] = c4d.VP_PREVIEWHARDWARE_SUPERSAMPLING_NONE
+    elif hw_rendersettings.get("SuperSampling", 2) == 1:
+        hw_rd[c4d.VP_PREVIEWHARDWARE_SUPERSAMPLING] = c4d.VP_PREVIEWHARDWARE_SUPERSAMPLING_2
+    elif hw_rendersettings.get("SuperSampling", 2) == 2:
+        hw_rd[c4d.VP_PREVIEWHARDWARE_SUPERSAMPLING] = c4d.VP_PREVIEWHARDWARE_SUPERSAMPLING_3
+    elif hw_rendersettings.get("SuperSampling", 2) == 3:
+        hw_rd[c4d.VP_PREVIEWHARDWARE_SUPERSAMPLING] = c4d.VP_PREVIEWHARDWARE_SUPERSAMPLING_4
+    elif hw_rendersettings.get("SuperSampling", 2) == 4:
+        hw_rd[c4d.VP_PREVIEWHARDWARE_SUPERSAMPLING] = c4d.VP_PREVIEWHARDWARE_SUPERSAMPLING_5
+    elif hw_rendersettings.get("SuperSampling", 2) == 5:
+        hw_rd[c4d.VP_PREVIEWHARDWARE_SUPERSAMPLING] = c4d.VP_PREVIEWHARDWARE_SUPERSAMPLING_8
+    elif hw_rendersettings.get("SuperSampling", 2) == 6:
+        hw_rd[c4d.VP_PREVIEWHARDWARE_SUPERSAMPLING] = c4d.VP_PREVIEWHARDWARE_SUPERSAMPLING_16
+    hw_rd[c4d.VP_PREVIEWHARDWARE_ENHANCEDOPENGL] = hw_rendersettings.get("useEffects", True)
+    hw_rd[c4d.VP_PREVIEWHARDWARE_NOISE] = hw_rendersettings.get("useHQNoise", False)
+    hw_rd[c4d.VP_PREVIEWHARDWARE_TRANSPARENCY] = hw_rendersettings.get("useTransparency", True)
+    hw_rd[c4d.VP_PREVIEWHARDWARE_SHADOW] = hw_rendersettings.get("useShadows", False)
+    hw_rd[c4d.VP_PREVIEWHARDWARE_REFLECTIONS] = hw_rendersettings.get("useReflections", True)
+    hw_rd[c4d.VP_PREVIEWHARDWARE_SSAO] = hw_rendersettings.get("useSSAO", False)
+    hw_rd[c4d.VP_PREVIEWHARDWARE_DEPTHOFFIELD] = hw_rendersettings.get("useDOF", False)
+    
+    # Filter Settings
+    hw_rd[c4d.VP_PREVIEWHARDWARE_ONLY_GEOMETRY] = hw_rendersettings.get("useGeoOnly", True)
+    if hw_rendersettings.get("useGeoOnly", False) == False:
+        hw_rd[c4d.VP_PREVIEWHARDWARE_DISPLAYFILTER_GRID] = hw_rendersettings.get("filterGrid", False)
+        hw_rd[c4d.VP_PREVIEWHARDWARE_DISPLAYFILTER_NULL] = hw_rendersettings.get("filterNull", False)
+        hw_rd[c4d.VP_PREVIEWHARDWARE_DISPLAYFILTER_SPLINE] = hw_rendersettings.get("filterSpline", False)
+        hw_rd[c4d.VP_PREVIEWHARDWARE_DISPLAYFILTER_DEFORMER] = hw_rendersettings.get("filterDeformer", False)
+        hw_rd[c4d.VP_PREVIEWHARDWARE_DISPLAYFILTER_FIELD] = hw_rendersettings.get("filterField", False)
+        hw_rd[c4d.VP_PREVIEWHARDWARE_DISPLAYFILTER_JOINT] = hw_rendersettings.get("filterJoint", False)
+        hw_rd[c4d.VP_PREVIEWHARDWARE_DISPLAYFILTER_CAMERA] = hw_rendersettings.get("filterCamera", False)
+        hw_rd[c4d.VP_PREVIEWHARDWARE_DISPLAYFILTER_LIGHT] = hw_rendersettings.get("filterLight", False)
+        hw_rd[c4d.VP_PREVIEWHARDWARE_DISPLAYFILTER_OTHER] = hw_rendersettings.get("filterOther", False)
+        hw_rd[c4d.VP_PREVIEWHARDWARE_DATA_SHOWPATH] = hw_rendersettings.get("filterAnimPath", False)
+
+    renderdata.InsertVideoPost(hw_rd)
+
+    return renderdata
+

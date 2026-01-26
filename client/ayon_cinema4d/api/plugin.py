@@ -7,12 +7,15 @@ from ayon_core.pipeline import (
     Creator,
     CreatedInstance,
     LoaderPlugin,
+    publish,
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID
 )
 from ayon_core.lib import BoolDef
 
 from ayon_cinema4d.api import pipeline
+
+import pyblish.api
 
 from . import lib
 
