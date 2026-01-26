@@ -57,11 +57,16 @@ class Cinema4DExtractReview(publish.Extractor):
             "filterAnimPath" : instance.data.get("filterAnimPath", False),
         }
 
+        separate_alpha = False
+        if alpha and fileformat == "jpg":
+            separate_alpha = True
+
         kwargs = {
             "frame_start": start,
             "frame_end": end,
             "doc": doc,
             "useAlpha": alpha,
+            "separate_alpha": separate_alpha,
         }
         if width is not None and height is not None:
             kwargs.update({
@@ -74,13 +79,34 @@ class Cinema4DExtractReview(publish.Extractor):
             kwargs.update({"hw_rendersettings": hw_rendersettings})
 
         exporters.render_playblast(filepath=path, **kwargs)
-        
+
         # Create the full filename with the extension
         if fileformat == "mp4" or fileformat == "mov":
             full_filename = f"{filename}.{fileformat}"
         else:
             full_filename = self.generate_frame_list(filename, start, end, fileformat)
-        
+
+        alpha_exists = False
+        full_alpha_filename = None
+        if alpha:
+            alpha_filename = f"a_{filename}"
+            if fileformat == "mp4" or fileformat == "mov":
+                full_alpha_filename = f"{alpha_filename}.{fileformat}"
+            else:
+                full_alpha_filename = self.generate_frame_list(
+                    alpha_filename, start, end, fileformat
+                )
+
+            first_alpha_file = None
+            if isinstance(full_alpha_filename, list):
+                if full_alpha_filename:
+                    first_alpha_file = full_alpha_filename[0]
+            else:
+                first_alpha_file = full_alpha_filename
+
+            if first_alpha_file and os.path.exists(os.path.join(dir_path, first_alpha_file)):
+                alpha_exists = True
+
         representation = {
             "name": fileformat,
             "ext": fileformat,
@@ -89,6 +115,19 @@ class Cinema4DExtractReview(publish.Extractor):
         }
         representation["tags"] = ["review", "preview", "ftrackreview"]
         instance.data.setdefault("representations", []).append(representation)
+
+        if alpha_exists:
+            representation_alpha = {
+                "name": "alpha",
+                "ext": fileformat,
+                "files": full_alpha_filename,
+                "stagingDir": dir_path,
+                "output": "alpha",
+                "outputName": "alpha",
+                "data": {"output": "alpha"},
+            }
+            representation_alpha["tags"] = ["review", "preview", "ftrackreview"]
+            instance.data["representations"].append(representation_alpha)
 
         self.log.info(f"Extracted instance '{instance.name}' to: {path}.{fileformat}")
 
