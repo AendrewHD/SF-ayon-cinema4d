@@ -522,47 +522,52 @@ def render_playblast(filepath,
             is_movie = file_format in ["mp4", "mov", "avi"]
 
             for f in generated_files:
-                # If we only have one file and it doesn't match the prefix, but we expect a movie
-                # or single frame, we might want to be lenient.
-                # However, for now, let's stick to the prefix check but log what we found if it fails.
-                if not f.startswith(temp_name):
-                    log.warning(f"Found unexpected file in temp dir: {f} (expected prefix: {temp_name})")
-                    # If it's the only file there, assume it is the render
-                    if len(generated_files) == 1:
-                        log.warning(f"Assuming {f} is the correct render artifact despite naming mismatch.")
-                    else:
-                        continue
-
                 src_path = os.path.join(temp_dir, f)
 
-                # Determine suffix
-                # If the file starts with the temp_name, strip it.
-                # If we are in the "fallback" mode (single file, wrong name), take the extension.
+                # Check for main render files (prefix match)
                 if f.startswith(temp_name):
                     suffix = f[len(temp_name):] # e.g. "0000.jpg" or ".mp4"
-                else:
+                    current_dest_filename = dest_filename
+
+                # Check for separate alpha files (prefix "A_" + temp_name)
+                # C4D naming: A_prefix0000.jpg
+                elif f.startswith(f"A_{temp_name}"):
+                    suffix = f[len(f"A_{temp_name}"):]
+                    # We usually expect alpha to be prefixed with "a_" in destination
+                    # extract_review expects "a_{filename}"
+                    current_dest_filename = f"a_{dest_filename}"
+
+                # Fallback: Single file mismatch handling
+                elif len(generated_files) == 1:
+                    log.warning(f"Found unexpected file in temp dir: {f} (expected prefix: {temp_name})")
+                    log.warning(f"Assuming {f} is the correct render artifact despite naming mismatch.")
                     _, ext = os.path.splitext(f)
                     suffix = ext
+                    current_dest_filename = dest_filename
+
+                else:
+                    log.warning(f"Ignoring unexpected file in temp dir: {f} (expected prefix: {temp_name})")
+                    continue
 
                 if is_movie:
                     # For movies, we expect the destination filename to already include the extension
                     # (handled by extract_review.py)
                     # output: reviewMain.mp4
-                    new_name = dest_filename
+                    new_name = current_dest_filename
                 else:
                     # Check if this is a single frame render requesting a specific filename
                     # (e.g. thumbnail.jpg)
                     is_single_frame = (frame_start == frame_end)
-                    ext_match = dest_filename.lower().endswith(f".{file_format.lower()}")
+                    ext_match = current_dest_filename.lower().endswith(f".{file_format.lower()}")
 
                     if is_single_frame and ext_match:
                         # Use destination filename exactly (ignore frame number suffix)
-                        new_name = dest_filename
+                        new_name = current_dest_filename
                     else:
                         # For sequences (or single frames without explicit extension):
                         # destination filename is the prefix (e.g. reviewMain)
                         # output: reviewMain0000.jpg
-                        new_name = dest_filename + suffix
+                        new_name = current_dest_filename + suffix
 
                 dst_path = os.path.join(dest_dir, new_name)
                 shutil.move(src_path, dst_path)
