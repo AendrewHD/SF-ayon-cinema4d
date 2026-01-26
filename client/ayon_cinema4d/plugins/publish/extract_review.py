@@ -127,8 +127,8 @@ class Cinema4DExtractReview(publish.Extractor):
             "ext": fileformat,
             "files": full_filename,
             "stagingDir": dir_path,
+            "tags": ["review", "ftrackreview"],
         }
-        representation["tags"] = ["review", "preview", "ftrackreview"]
         instance.data.setdefault("representations", []).append(representation)
 
         if alpha_exists:
@@ -140,8 +140,8 @@ class Cinema4DExtractReview(publish.Extractor):
                 "output": "alpha",
                 "outputName": "alpha",
                 "data": {"output": "alpha"},
+                "tags": ["review", "ftrackreview"],
             }
-            representation_alpha["tags"] = ["review", "preview", "ftrackreview"]
             instance.data["representations"].append(representation_alpha)
 
         self.log.info(f"Extracted instance '{instance.name}' to: {path}.{fileformat}")
