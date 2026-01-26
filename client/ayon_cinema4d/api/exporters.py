@@ -374,6 +374,7 @@ def render_playblast(filepath,
                      height=1080,
                      file_format="jpg",
                      useAlpha=False,
+                     separate_alpha=False,
                      doc=None,
                      hw_rendersettings=None):
     """Create a playblast of the given or active document.
@@ -447,10 +448,8 @@ def render_playblast(filepath,
         rendersettings[c4d.RDATA_FORMAT] = 1125 # c4d.FILTER_mp4
         
     # Set Alpha
-    if file_format in ("jpg","mp4"):
-        rendersettings[c4d.RDATA_ALPHACHANNEL] = useAlpha
-    else:
-        rendersettings[c4d.RDATA_ALPHACHANNEL] = useAlpha
+    rendersettings[c4d.RDATA_ALPHACHANNEL] = useAlpha
+    rendersettings[c4d.RDATA_SEPARATEALPHA] = separate_alpha
 
     # Set resolution
     rendersettings[c4d.RDATA_XRES] = float(width)
