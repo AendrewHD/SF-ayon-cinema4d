@@ -473,14 +473,18 @@ def render_playblast(filepath,
     doc.SetActiveRenderData(renderdata)
     c4d.EventAdd()
 
-    # Renders the document
-    result = c4d.documents.RenderDocument(
-        doc,
-        renderdata.GetDataInstance(),
-        bmp,
-        c4d.RENDERFLAGS_EXTERNAL | c4d.RENDERFLAGS_NODOCUMENTCLONE
-    )
-    
+    try:
+        # Renders the document
+        result = c4d.documents.RenderDocument(
+            doc,
+            renderdata.GetDataInstance(),
+            bmp,
+            c4d.RENDERFLAGS_EXTERNAL | c4d.RENDERFLAGS_NODOCUMENTCLONE
+        )
+    finally:
+        renderdata.Remove()
+        c4d.EventAdd()
+
     if result != c4d.RENDERRESULT_OK:
         raise RenderError(
             "Failed to render {filepath}. (error code: {result})".format(

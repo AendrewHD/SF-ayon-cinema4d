@@ -1,9 +1,7 @@
 import os
 import c4d
 
-import ayon_core
 from ayon_core.pipeline import publish
-from ayon_core.pipeline.farm.pyblish_functions import get_product_name_and_group_from_template
 from ayon_cinema4d.api import exporters
 
 
@@ -23,10 +21,6 @@ class Cinema4DExtractReview(publish.Extractor):
 
         # TODO: Allow using members for isolate view
         # nodes = instance[:]
-        # Define extract output file path
-        dir_path = self.staging_dir(instance)
-        filename = "{0}".format(instance.name)
-        path = os.path.join(dir_path, filename)
 
         # Export selection to camera
         # Prefer instance-defined resolution when available (from creator)
@@ -34,6 +28,14 @@ class Cinema4DExtractReview(publish.Extractor):
         height = instance.data.get("reviewHeight")
         fileformat = instance.data.get("imageFormat")
         alpha = instance.data.get("useAlpha", False)
+
+        # Define extract output file path
+        dir_path = self.staging_dir(instance)
+        filename = "{0}".format(instance.name)
+        if fileformat in ["mp4", "mov"]:
+            path = os.path.join(dir_path, f"{filename}.{fileformat}")
+        else:
+            path = os.path.join(dir_path, filename)
         hw_rendersettings = {
             "AA" : instance.data.get("AA", 2),
             "SuperSampling" : instance.data.get("SuperSampling", 2),
@@ -79,6 +81,9 @@ class Cinema4DExtractReview(publish.Extractor):
             kwargs.update({"hw_rendersettings": hw_rendersettings})
 
         exporters.render_playblast(filepath=path, **kwargs)
+
+        # Render thumbnail
+        self._render_thumbnail(instance, dir_path, start, end, width, height, hw_rendersettings)
 
         # Create the full filename with the extension
         if fileformat == "mp4" or fileformat == "mov":
@@ -130,6 +135,36 @@ class Cinema4DExtractReview(publish.Extractor):
             instance.data["representations"].append(representation_alpha)
 
         self.log.info(f"Extracted instance '{instance.name}' to: {path}.{fileformat}")
+
+    def _render_thumbnail(self, instance, dir_path, start, end, width, height, hw_rendersettings):
+        mid_frame = int((start + end) / 2)
+        thumbnail_filename = "thumbnail.jpg"
+        thumbnail_path = os.path.join(dir_path, thumbnail_filename)
+
+        self.log.info(f"Rendering thumbnail to {thumbnail_path}")
+
+        kwargs = {
+            "frame_start": mid_frame,
+            "frame_end": mid_frame,
+            "doc": instance.context.data["doc"],
+            "useAlpha": False,
+            "separate_alpha": False,
+            "file_format": "jpg",
+            "hw_rendersettings": hw_rendersettings
+        }
+        if width and height:
+            kwargs.update({"width": width, "height": height})
+
+        exporters.render_playblast(filepath=thumbnail_path, **kwargs)
+
+        representation = {
+            "name": "thumbnail",
+            "ext": "jpg",
+            "files": thumbnail_filename,
+            "stagingDir": dir_path,
+            "tags": ["thumbnail"]
+        }
+        instance.data.setdefault("representations", []).append(representation)
 
     def generate_frame_list(self, base_filename, start_frame, end_frame, file_format):
         """
