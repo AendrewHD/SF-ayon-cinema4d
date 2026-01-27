@@ -23,21 +23,54 @@ class Cinema4DExtractReview(publish.Extractor):
 
         # TODO: Allow using members for isolate view
         # nodes = instance[:]
-        # Define extract output file path
-        dir_path = self.staging_dir(instance)
-        filename = lib.sanitize_filename(instance.name)
-        path = os.path.join(dir_path, filename)
 
         # Export selection to camera
         # Prefer instance-defined resolution when available (from creator)
         width = instance.data.get("reviewWidth")
         height = instance.data.get("reviewHeight")
         fileformat = instance.data.get("imageFormat")
+        alpha = instance.data.get("useAlpha", False)
+
+        # Define extract output file path
+        dir_path = self.staging_dir(instance)
+        filename = "{0}".format(instance.name)
+        if fileformat in ["mp4", "mov"]:
+            path = os.path.join(dir_path, f"{filename}.{fileformat}")
+        else:
+            path = os.path.join(dir_path, filename)
+        hw_rendersettings = {
+            "AA" : instance.data.get("AA", 2),
+            "SuperSampling" : instance.data.get("SuperSampling", 2),
+            "useEffects" : instance.data.get("useEffects", True),
+            "useHQNoise" : instance.data.get("useHQNoise", False),
+            "useTransparency" : instance.data.get("useTransparency", True),
+            "useShadows" : instance.data.get("useShadows", False),
+            "useReflections" : instance.data.get("useReflections", True),
+            "useSSAO" : instance.data.get("useSSAO", False),
+            "useDOF" : instance.data.get("useDOF", False),
+            "useGeoOnly" : instance.data.get("useGeoOnly", True),
+            "filterGrid" : instance.data.get("filterGrid", False),
+            "filterNull" : instance.data.get("filterNull", False),
+            "filterSpline" : instance.data.get("filterSpline", False),
+            "filterDeformer" : instance.data.get("filterDeformer", False),
+            "filterField" : instance.data.get("filterField", False),
+            "filterJoint" : instance.data.get("filterJoint", False),
+            "filterCamera" : instance.data.get("filterCamera", False),
+            "filterLight" : instance.data.get("filterLight", False),
+            "filterOther" : instance.data.get("filterOther", False),
+            "filterAnimPath" : instance.data.get("filterAnimPath", False),
+        }
+
+        separate_alpha = False
+        if alpha and fileformat == "jpg":
+            separate_alpha = True
 
         kwargs = {
             "frame_start": start,
             "frame_end": end,
             "doc": doc,
+            "useAlpha": alpha,
+            "separate_alpha": separate_alpha,
         }
         if width is not None and height is not None:
             kwargs.update({
