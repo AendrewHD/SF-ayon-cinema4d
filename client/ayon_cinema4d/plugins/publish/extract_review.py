@@ -45,7 +45,7 @@ class Cinema4DExtractReview(publish.Extractor):
                 "height": int(height),
             })
         if fileformat is not None:
-            kwargs.update({"fileformat": fileformat})
+            kwargs.update({"file_format": fileformat})
 
         exporters.render_playblast(path, **kwargs)
 
