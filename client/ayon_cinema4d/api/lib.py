@@ -650,3 +650,38 @@ def generate_review(files, output_path, fps=24):
             os.remove(list_file_path)
 
     return output_path
+
+
+def generate_thumbnail(source_file, output_path):
+    """
+    Generate a thumbnail (JPG) from a source image file using ffmpeg.
+
+    Args:
+        source_file (str): Path to source image.
+        output_path (str): Path to output JPG.
+    """
+    log = logging.getLogger(__name__)
+
+    ffmpeg_cmd = get_ffmpeg_tool_args("ffmpeg")
+
+    cmd = ffmpeg_cmd + [
+        "-y",
+        "-i", source_file,
+        "-vframes", "1",
+        output_path
+    ]
+
+    log.info(f"Generating thumbnail: {' '.join(cmd)}")
+
+    try:
+        subprocess.run(
+            cmd,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+    except subprocess.CalledProcessError as e:
+        log.error(f"FFmpeg thumbnail generation failed: {e.stderr.decode()}")
+        raise
+
+    return output_path

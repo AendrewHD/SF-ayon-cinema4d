@@ -84,6 +84,32 @@ class Cinema4DExtractReview(publish.Extractor):
 
             instance.data.setdefault("representations", []).append(representation)
 
+            # Generate thumbnail if not alpha and sequence
+            if not is_alpha and len(seq_files) > 0:
+                thumb_filename = "thumbnail.jpg"
+                thumb_path = os.path.join(dir_path, thumb_filename)
+
+                # Check if thumbnail already exists (e.g. from previous loop)
+                if not os.path.exists(thumb_path):
+                    # Pick middle frame
+                    middle_index = len(seq_files) // 2
+                    source_file = seq_files[middle_index]
+                    source_path = os.path.join(dir_path, source_file)
+
+                    try:
+                        lib.generate_thumbnail(source_path, thumb_path)
+
+                        thumb_repre = {
+                            "name": "thumbnail",
+                            "ext": "jpg",
+                            "files": thumb_filename,
+                            "stagingDir": dir_path,
+                            "tags": ["thumbnail"]
+                        }
+                        instance.data.setdefault("representations", []).append(thumb_repre)
+                    except Exception as e:
+                        self.log.warning(f"Failed to generate thumbnail: {e}")
+
             # If it is an image sequence, we want to generate a review MP4
             # Skip alpha sequences for review generation
             if ext not in ["mp4", "mov"] and len(seq_files) > 1 and not is_alpha:
