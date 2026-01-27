@@ -14,6 +14,14 @@ class ExtractRedshiftRender(publish.Extractor):
     families = ["redshiftRender"]
 
     def process(self, instance):
+        # SKIP PROCESSING IF FARM RENDERING IS REQUESTED
+        # The 'PrepareRedshiftFarm' plugin (Collector) should have changed the family to 'render'
+        # so this extractor (targeting 'redshiftRender') shouldn't even run.
+        # But if it does run (e.g. dynamic family updates issue), check the flag explicitly.
+        if instance.data.get("renderOnFarm"):
+            self.log.debug("Instance is marked for farm rendering. Skipping local extraction.")
+            return
+
         doc = instance.context.data["doc"]
 
         self.log.info(f"Processing {instance.name}")
@@ -144,13 +152,8 @@ class ExtractRedshiftRender(publish.Extractor):
             if rd:
                 rd.Remove()
 
-        # Determine the integration product type (must act as 'render' for correct template usage)
-        # We check if we are in a 'redshiftRender' instance, and if so, masquerade as 'render'
-        # for integration purposes so it uses the {root}/{project}/{...}/render path.
-        if instance.data["productType"] == "redshiftRender":
-             instance.data["productType"] = "render"
-             # Also add 'render' to families if needed, but Integrate usually uses productType/family
-             instance.data["family"] = "render"
+        # Remove the logic that changes family to 'render' here, as it triggers Deadline.
+        # This is now handled by PreIntegrateRedshift (Integrator) which runs AFTER Deadline check.
 
         # Collect generated files
         files = os.listdir(staging_dir)
