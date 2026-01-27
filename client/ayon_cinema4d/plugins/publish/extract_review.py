@@ -64,22 +64,29 @@ class Cinema4DExtractReview(publish.Extractor):
             # Identify extension
             ext = os.path.splitext(seq_files[0])[1].lstrip(".").lower()
 
+            # Check for Alpha sequence
+            is_alpha = os.path.basename(seq_files[0]).lower().startswith("a_")
+
             # Main representation (sequence or movie)
             representation = {
-                "name": ext,
+                "name": "alpha" if is_alpha else ext,
                 "ext": ext,
                 "files": seq_files if len(seq_files) > 1 else seq_files[0],
                 "stagingDir": dir_path,
             }
 
+            if is_alpha:
+                representation["outputName"] = "alpha"
+
             # If it is a video file, tag it as review
-            if ext in ["mp4", "mov"]:
+            if ext in ["mp4", "mov"] and not is_alpha:
                 representation["tags"] = ["review", "preview", "ftrackreview"]
 
             instance.data.setdefault("representations", []).append(representation)
 
             # If it is an image sequence, we want to generate a review MP4
-            if ext not in ["mp4", "mov"] and len(seq_files) > 1:
+            # Skip alpha sequences for review generation
+            if ext not in ["mp4", "mov"] and len(seq_files) > 1 and not is_alpha:
                 # Generate review
                 review_filename = f"{filename}.mp4"
                 review_path = os.path.join(dir_path, review_filename)

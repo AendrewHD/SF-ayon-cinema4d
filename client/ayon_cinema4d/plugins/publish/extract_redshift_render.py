@@ -178,17 +178,23 @@ class ExtractRedshiftRender(publish.Extractor):
             # Identify extension
             ext = os.path.splitext(seq_files[0])[1].lstrip(".").lower()
 
+            # Check for Alpha sequence
+            is_alpha = os.path.basename(seq_files[0]).lower().startswith("a_")
+
             repre = {
-                "name": ext,
+                "name": "alpha" if is_alpha else ext,
                 "ext": ext,
                 "files": seq_files if len(seq_files) > 1 else seq_files[0],
                 "stagingDir": staging_dir,
             }
 
+            if is_alpha:
+                repre["outputName"] = "alpha"
+
             instance.data.setdefault("representations", []).append(repre)
 
             # Generate review from sequence
-            if ext not in ["mp4", "mov"] and len(seq_files) > 1:
+            if ext not in ["mp4", "mov"] and len(seq_files) > 1 and not is_alpha:
                 review_filename = f"{filename_base}_review.mp4"
                 review_path = os.path.join(staging_dir, review_filename)
                 try:
