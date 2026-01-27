@@ -462,6 +462,9 @@ def render_playblast(filepath,
     rendersettings[c4d.RDATA_XRES] = float(width)
     rendersettings[c4d.RDATA_YRES] = float(height)
 
+    # Use default dict if hw_rendersettings is None
+    if hw_rendersettings is None:
+        hw_rendersettings = {}
     set_hardware_render_settings(hw_rendersettings=hw_rendersettings, renderdata=renderdata)
 
     # Initialize bitmap (required by RenderDocument even if rendering externally)
