@@ -124,11 +124,11 @@ class Cinema4DExtractReview(publish.Extractor):
                     lib.generate_review(seq_files, review_path, fps=fps)
 
                     review_repre = {
-                        "name": "review",
+                        "name": "mp4",
                         "ext": "mp4",
-                        "outputName": "review",
                         "files": review_filename,
                         "stagingDir": dir_path,
+                        "preview": True,
                         "tags": ["review", "ftrackreview"]
                     }
                     instance.data["representations"].append(review_repre)

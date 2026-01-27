@@ -64,7 +64,6 @@ class ExtractRedshiftRender(publish.Extractor):
         # Thumbnail Setup
         thumb_filename = "thumbnail.jpg"
         thumb_path = os.path.join(staging_dir, thumb_filename)
-        thumbnail_frame = int(frame_start) + (int(frame_end) - int(frame_start)) // 2
 
         try:
             # Modify the RenderData Object Directly
@@ -125,9 +124,6 @@ class ExtractRedshiftRender(publish.Extractor):
                 if res != c4d.RENDERRESULT_OK:
                     raise RuntimeError(f"Render failed for frame {frame} with error {res}")
 
-                # Save thumbnail
-                if frame == thumbnail_frame:
-                    bmp.Save(thumb_path, c4d.FILTER_JPG, c4d.BaseContainer(), c4d.SAVEBIT_ALPHA)
 
 
         finally:
@@ -155,6 +151,25 @@ class ExtractRedshiftRender(publish.Extractor):
         # Verify if any render files (other than review) were generated
         if not sequences:
              self.log.error("No render output files found. Redshift may have failed to save images, or the output path is incorrect.")
+
+        # Identify main sequence for thumbnail
+        main_seq_files = None
+        for seq_name, seq_files in sequences.items():
+             prefix = seq_name.split("#")[0]
+             is_alpha = os.path.basename(seq_files[0]).lower().startswith("a_")
+             if prefix == filename_base and not is_alpha and len(seq_files) > 0:
+                  main_seq_files = seq_files
+                  break
+
+        # Generate thumbnail from main sequence if it doesn't exist
+        if main_seq_files and not os.path.exists(thumb_path):
+            try:
+                middle_index = len(main_seq_files) // 2
+                source_file = main_seq_files[middle_index]
+                source_path = os.path.join(staging_dir, source_file)
+                lib.generate_thumbnail(source_path, thumb_path)
+            except Exception as e:
+                self.log.warning(f"Failed to generate thumbnail: {e}")
 
         # Add thumbnail representation if it exists
         if os.path.exists(thumb_path):
@@ -208,11 +223,11 @@ class ExtractRedshiftRender(publish.Extractor):
                     lib.generate_review(seq_files, review_path, fps=fps)
 
                     review_repre = {
-                        "name": "review",
+                        "name": "mp4",
                         "ext": "mp4",
-                        "outputName": "review",
                         "files": review_filename,
                         "stagingDir": staging_dir,
+                        "preview": True,
                         "tags": ["review", "ftrackreview"]
                     }
                     instance.data["representations"].append(review_repre)
