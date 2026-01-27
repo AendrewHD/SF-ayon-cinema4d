@@ -153,8 +153,14 @@ class Cinema4DExtractReview(publish.Extractor):
                 # FPS
                 fps = instance.data.get("fps", doc.GetFps())
 
+                # Burnin Data
+                settings = instance.context.data["project_settings"]["cinema4d"]["publish"]["Cinema4DExtractReview"]["burnin"]
+                burnin_data = lib.prepare_burnin_data(settings, instance, start)
+
                 try:
-                    lib.generate_review(seq_files, review_path, fps=fps)
+                    lib.generate_review(
+                        seq_files, review_path, fps=fps, burnin_data=burnin_data
+                    )
 
                     review_repre = {
                         "name": "mp4",

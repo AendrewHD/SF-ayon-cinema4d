@@ -219,8 +219,15 @@ class ExtractRedshiftRender(publish.Extractor):
             ):
                 review_filename = f"{filename_base}_review.mp4"
                 review_path = os.path.join(staging_dir, review_filename)
+
+                # Burnin Data
+                settings = instance.context.data["project_settings"]["cinema4d"]["publish"]["ExtractRedshiftRender"]["burnin"]
+                burnin_data = lib.prepare_burnin_data(settings, instance, frame_start)
+
                 try:
-                    lib.generate_review(seq_files, review_path, fps=fps)
+                    lib.generate_review(
+                        seq_files, review_path, fps=fps, burnin_data=burnin_data
+                    )
 
                     review_repre = {
                         "name": "mp4",

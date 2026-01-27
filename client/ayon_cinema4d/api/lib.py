@@ -1,6 +1,7 @@
 """Library functions for Cinema4d."""
 import collections
 import contextlib
+import datetime
 import logging
 import math
 import os
@@ -589,7 +590,59 @@ def collect_sequences(files):
     return sequences
 
 
-def generate_review(files, output_path, fps=24):
+def prepare_burnin_data(burnin_settings, instance, start_frame):
+    """Prepare burnin data from settings and instance data.
+
+    Args:
+        burnin_settings (dict): Burnin settings.
+        instance (pyblish.api.Instance): The instance.
+        start_frame (int): The start frame.
+
+    Returns:
+        dict: The prepared burnin data or None if disabled.
+    """
+    if not burnin_settings.get("enabled"):
+        return None
+
+    data = burnin_settings.copy()
+
+    # Prepare template data
+    context_data = instance.context.data
+
+    # Safe get for optional data
+    version = instance.data.get("version", context_data.get("version"))
+    if not version:
+        # Try to find from instance name or assume it's collected
+        version = "v001"  # Fallback
+
+    # Date/Time
+    now = datetime.datetime.now()
+    date_str = now.strftime("%Y-%m-%d")
+    time_str = now.strftime("%H:%M")
+
+    replacements = {
+        "{asset}": instance.data.get("folderPath", instance.data.get("asset", "")),
+        "{task}": instance.data.get("task", ""),
+        "{version}": str(version),
+        "{date}": date_str,
+        "{time}": time_str,
+    }
+
+    # Perform replacements on position keys
+    for key in ["top_left", "top_center", "top_right", "bottom_left", "bottom_center", "bottom_right"]:
+        text = data.get(key)
+        if text:
+            for src, dst in replacements.items():
+                text = text.replace(src, str(dst))
+            data[key] = text
+
+    # Add start frame
+    data["start_frame"] = start_frame
+
+    return data
+
+
+def generate_review(files, output_path, fps=24, burnin_data=None):
     """
     Generate MP4 review from a list of image files using ffmpeg.
 
@@ -597,6 +650,7 @@ def generate_review(files, output_path, fps=24):
         files (list): List of image filenames.
         output_path (str): Full path to output MP4 file.
         fps (float): Frame rate.
+        burnin_data (dict, optional): Burnin configuration and values.
     """
     log = logging.getLogger(__name__)
 
@@ -620,6 +674,56 @@ def generate_review(files, output_path, fps=24):
     # We construct the command
     ffmpeg_cmd = get_ffmpeg_tool_args("ffmpeg")
 
+    vf_filters = ["pad=ceil(iw/2)*2:ceil(ih/2)*2"]
+
+    if burnin_data and burnin_data.get("enabled"):
+        # Extract settings
+        font_size = burnin_data.get("font_size", 42)
+        font_color = burnin_data.get("font_color", "white")
+        font_path = burnin_data.get("font_path", "")
+
+        # Prepare drawtext args
+        # Add shadow for better readability
+        common_args = f"fontsize={font_size}:fontcolor={font_color}:shadowcolor=black:shadowx=2:shadowy=2"
+        if font_path:
+            # Escape path for ffmpeg: backslashes need to be doubled or
+            # replaced by forward slashes, and colons escaped.
+            safe_font_path = font_path.replace("\\", "/").replace(":", "\\:")
+            common_args += f":fontfile='{safe_font_path}'"
+
+        # Define positions
+        # x, y, text_key
+        positions = {
+            "top_left": ("10", "10", "top_left"),
+            "top_center": ("(w-text_w)/2", "10", "top_center"),
+            "top_right": ("w-text_w-10", "10", "top_right"),
+            "bottom_left": ("10", "h-text_h-10", "bottom_left"),
+            "bottom_center": ("(w-text_w)/2", "h-text_h-10", "bottom_center"),
+            "bottom_right": ("w-text_w-10", "h-text_h-10", "bottom_right"),
+        }
+
+        for key, (x, y, text_key) in positions.items():
+            text = burnin_data.get(text_key)
+            if text:
+                # Handle substitutions
+                # {frame} -> %{n + start_frame}
+                start_frame = burnin_data.get("start_frame", 0)
+
+                if "{frame}" in text:
+                    # Escape the text for drawtext
+                    # We want to replace {frame} with %{eif:n+start_frame:d}
+                    repl = f"%{{eif:n+{start_frame}:d}}"
+                    text = text.replace("{frame}", repl)
+
+                # Escape single quotes and colons in text
+                safe_text = text.replace("'", "'\\''").replace(":", "\\:")
+
+                drawtext = f"drawtext={common_args}:text='{safe_text}':x={x}:y={y}"
+                vf_filters.append(drawtext)
+
+    # Join filters
+    vf_chain = ",".join(vf_filters)
+
     cmd = ffmpeg_cmd + [
         "-y",  # Overwrite
         "-r", str(fps),  # Input fps
@@ -628,7 +732,7 @@ def generate_review(files, output_path, fps=24):
         "-i", list_file_path,
         "-c:v", "libx264",
         "-pix_fmt", "yuv420p",
-        "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",  # Ensure even dimensions
+        "-vf", vf_chain,
         output_path
     ]
 
