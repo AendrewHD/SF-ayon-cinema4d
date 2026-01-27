@@ -48,17 +48,58 @@ class Cinema4DExtractReview(publish.Extractor):
             kwargs.update({"fileformat": fileformat})
 
         exporters.render_playblast(path, **kwargs)
-        
-        # Create the full filename with the extension
-        full_filename = f"{filename}.{fileformat}"
 
-        representation = {
-            "name": fileformat,
-            "ext": fileformat,
-            "files": full_filename,
-            "stagingDir": dir_path,
-        }
-        representation["tags"] = ["review", "preview", "ftrackreview"]
-        instance.data.setdefault("representations", []).append(representation)
+        # Collect the files
+        files = os.listdir(dir_path)
+        sequences = lib.collect_sequences(files)
 
-        self.log.info(f"Extracted instance '{instance.name}' to: {path}.{fileformat}")
+        for seq_name, seq_files in sequences.items():
+            if not seq_files:
+                continue
+
+            # Sort files
+            if isinstance(seq_files, list):
+                seq_files.sort()
+
+            # Identify extension
+            ext = os.path.splitext(seq_files[0])[1].lstrip(".").lower()
+
+            # Main representation (sequence or movie)
+            representation = {
+                "name": ext,
+                "ext": ext,
+                "files": seq_files if len(seq_files) > 1 else seq_files[0],
+                "stagingDir": dir_path,
+            }
+
+            # If it is a video file, tag it as review
+            if ext in ["mp4", "mov"]:
+                representation["tags"] = ["review", "preview", "ftrackreview"]
+
+            instance.data.setdefault("representations", []).append(representation)
+
+            # If it is an image sequence, we want to generate a review MP4
+            if ext not in ["mp4", "mov"] and len(seq_files) > 1:
+                # Generate review
+                review_filename = f"{filename}.mp4"
+                review_path = os.path.join(dir_path, review_filename)
+
+                # FPS
+                fps = instance.data.get("fps", doc.GetFps())
+
+                try:
+                    lib.generate_review(seq_files, review_path, fps=fps)
+
+                    review_repre = {
+                        "name": "mp4",
+                        "ext": "mp4",
+                        "files": review_filename,
+                        "stagingDir": dir_path,
+                        "tags": ["review", "preview", "ftrackreview"]
+                    }
+                    instance.data["representations"].append(review_repre)
+                    self.log.info(f"Generated review mp4: {review_path}")
+                except Exception as e:
+                    self.log.error(f"Failed to generate review mp4: {e}")
+
+        self.log.info(f"Extracted instance '{instance.name}'")

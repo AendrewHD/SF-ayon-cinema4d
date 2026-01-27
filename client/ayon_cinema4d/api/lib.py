@@ -1,12 +1,16 @@
 """Library functions for Cinema4d."""
+import collections
 import contextlib
+import logging
 import math
+import os
 import json
 import re
+import subprocess
 
 import c4d
 
-from ayon_core.lib import NumberDef
+from ayon_core.lib import NumberDef, get_ffmpeg_tool_args
 
 AYON_CONTAINERS = "AYON_CONTAINERS"
 JSON_PREFIX = "JSON::"
@@ -557,3 +561,92 @@ def createPlayblastRenderData():
     # Insert the RenderData object into the document
     doc.InsertRenderData(render_data)
     return render_data
+
+
+def collect_sequences(files):
+    """
+    Group files into sequences.
+    Returns dict: { "sequence_key": [files...] }
+    For single files (like mp4), key is filename.
+    """
+    sequences = collections.defaultdict(list)
+
+    # Regex to match frame numbers at end of name before extension
+    # e.g. name.0001.ext or name0001.ext
+    frame_pattern = re.compile(r'^(.*?)(\.?\d+)(\.[^.]+)$')
+
+    for f in files:
+        match = frame_pattern.match(f)
+        if match:
+            prefix, frame, ext = match.groups()
+            # Use prefix + ext as key
+            key = f"{prefix}#{ext}"
+            sequences[key].append(f)
+        else:
+            # Single file or unrecognised pattern
+            sequences[f].append(f)
+
+    return sequences
+
+
+def generate_review(files, output_path, fps=24):
+    """
+    Generate MP4 review from a list of image files using ffmpeg.
+
+    Args:
+        files (list): List of image filenames.
+        output_path (str): Full path to output MP4 file.
+        fps (float): Frame rate.
+    """
+    log = logging.getLogger(__name__)
+
+    if not files:
+        log.warning("No files provided for review generation.")
+        return
+
+    # Sort files to ensure order
+    files.sort()
+
+    # Create a list file for ffmpeg concat
+    list_file_path = os.path.join(os.path.dirname(output_path), "ffmpeg_list.txt")
+    with open(list_file_path, "w") as f:
+        for file in files:
+            # Escape single quotes in filename
+            safe_file = file.replace("'", "'\\''")
+            f.write(f"file '{safe_file}'\n")
+
+    # Get ffmpeg args
+    # get_ffmpeg_tool_args returns something like ["path/to/ffmpeg"]
+    # We construct the command
+    ffmpeg_cmd = get_ffmpeg_tool_args("ffmpeg")
+
+    cmd = ffmpeg_cmd + [
+        "-y",  # Overwrite
+        "-r", str(fps),  # Input fps
+        "-f", "concat",
+        "-safe", "0",
+        "-i", list_file_path,
+        "-c:v", "libx264",
+        "-pix_fmt", "yuv420p",
+        "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",  # Ensure even dimensions
+        output_path
+    ]
+
+    log.info(f"Running ffmpeg: {' '.join(cmd)}")
+
+    try:
+        subprocess.run(
+            cmd,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        log.info(f"Review generated at {output_path}")
+    except subprocess.CalledProcessError as e:
+        log.error(f"FFmpeg failed: {e.stderr.decode()}")
+        raise
+    finally:
+        if os.path.exists(list_file_path):
+            os.remove(list_file_path)
+
+    return output_path
