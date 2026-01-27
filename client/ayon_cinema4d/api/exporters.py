@@ -373,7 +373,8 @@ def render_playblast(filepath,
                      width=1920,
                      height=1080,
                      file_format="jpg",
-                     doc=None):
+                     doc=None,
+                     hw_rendersettings=None):
     """Create a playblast of the given or active document.
 
     Args:
@@ -387,10 +388,14 @@ def render_playblast(filepath,
         height (int): Resolution height for the render.
         doc (Optional[c4d.documents.BaseDocument]): Document to operate in.
             Defaults to active document if not set.
+        hw_rendersettings (Optional[dict]): Hardware render settings.
 
     Returns:
         str: The filepath of the rendered movie.
     """
+    if hw_rendersettings is None:
+        hw_rendersettings = {}
+
     doc = doc or c4d.documents.GetActiveDocument()
     doc_fps = doc.GetFps()
     if fps is None:
