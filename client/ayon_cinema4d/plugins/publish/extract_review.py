@@ -80,7 +80,7 @@ class Cinema4DExtractReview(publish.Extractor):
 
             # If it is a video file, tag it as review
             if ext in ["mp4", "mov"] and not is_alpha:
-                representation["tags"] = ["review", "preview", "ftrackreview"]
+                representation["tags"] = ["review", "ftrackreview"]
 
             instance.data.setdefault("representations", []).append(representation)
 
@@ -128,7 +128,7 @@ class Cinema4DExtractReview(publish.Extractor):
                         "ext": "mp4",
                         "files": review_filename,
                         "stagingDir": dir_path,
-                        "tags": ["review", "preview", "ftrackreview"]
+                        "tags": ["review", "ftrackreview"]
                     }
                     instance.data["representations"].append(review_repre)
                     self.log.info(f"Generated review mp4: {review_path}")
