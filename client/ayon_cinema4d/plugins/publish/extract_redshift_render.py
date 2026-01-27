@@ -221,8 +221,12 @@ class ExtractRedshiftRender(publish.Extractor):
                 review_path = os.path.join(staging_dir, review_filename)
 
                 # Burnin Data
-                settings = instance.context.data["project_settings"]["cinema4d"]["publish"]["ExtractRedshiftRender"]["burnin"]
-                burnin_data = lib.prepare_burnin_data(settings, instance, frame_start)
+                project_settings = instance.context.data["project_settings"]["cinema4d"]
+                if "publish" in project_settings:
+                    settings = project_settings["publish"]["ExtractRedshiftRender"]["burnin"]
+                    burnin_data = lib.prepare_burnin_data(settings, instance, frame_start)
+                else:
+                    burnin_data = None
 
                 try:
                     lib.generate_review(

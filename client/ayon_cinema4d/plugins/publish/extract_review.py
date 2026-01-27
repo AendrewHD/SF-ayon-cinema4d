@@ -155,8 +155,12 @@ class Cinema4DExtractReview(publish.Extractor):
                 fps = instance.data.get("fps", doc.GetFps())
 
                 # Burnin Data
-                settings = instance.context.data["project_settings"]["cinema4d"]["publish"]["Cinema4DExtractReview"]["burnin"]
-                burnin_data = lib.prepare_burnin_data(settings, instance, start)
+                project_settings = instance.context.data["project_settings"]["cinema4d"]
+                if "publish" in project_settings:
+                    settings = project_settings["publish"]["Cinema4DExtractReview"]["burnin"]
+                    burnin_data = lib.prepare_burnin_data(settings, instance, start)
+                else:
+                    burnin_data = None
 
                 try:
                     lib.generate_review(
