@@ -16,23 +16,19 @@ class PrepareRedshiftFarm(pyblish.api.InstancePlugin):
         if instance.data.get("renderOnFarm"):
             self.log.info(f"Marking {instance.name} for Farm rendering.")
             instance.data["family"] = "render"
-            # We keep 'productType' as 'redshiftRender' for now?
-            # Deadline submitter likely checks family.
-            # But if we change family to 'render', my local extractor (targeting redshiftRender) might skip it?
-            # pyblish filtering is based on initial state or dynamic?
-            # Usually dynamic. If family changes, subsequent plugins check against new family.
+            # Ensure 'families' also reflects this if it exists
+            if "families" in instance.data:
+                if "redshiftRender" in instance.data["families"]:
+                    instance.data["families"].remove("redshiftRender")
+                if "render" not in instance.data["families"]:
+                    instance.data["families"].append("render")
+        else:
+            # Ensure 'render' is NOT in family/families for local render
+            # This is a safety measure against accidental family pollution
+            if instance.data.get("family") == "render":
+                 instance.data["family"] = "redshiftRender"
 
-            # Note: CreateRedshiftRender sets product_type="redshiftRender".
-            # If we change family to "render", we ensure Deadline sees it.
-            # We also need to ensure ExtractRedshiftRender ignores it.
-            # ExtractRedshiftRender targets "redshiftRender".
-
-            # If I change family to "render", does "redshiftRender" plugin still run?
-            # Only if "redshiftRender" is in families list.
-            # By default families = ["redshiftRender"].
-            # If I set instance.data["family"] = "render", then families = ["render"].
-            # So "redshiftRender" plugin will NOT run. Perfect.
-
-            # However, we must ensure 'render' family logic runs.
-            # Usually generic collectors run early.
-            pass
+            if "families" in instance.data and "render" in instance.data["families"]:
+                instance.data["families"].remove("render")
+                if "redshiftRender" not in instance.data["families"]:
+                     instance.data["families"].append("redshiftRender")
