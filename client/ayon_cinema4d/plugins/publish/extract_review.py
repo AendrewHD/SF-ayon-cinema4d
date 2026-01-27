@@ -79,141 +79,94 @@ class Cinema4DExtractReview(publish.Extractor):
             })
         if fileformat is not None:
             kwargs.update({"file_format": fileformat})
-        if hw_rendersettings is not None:
-            kwargs.update({"hw_rendersettings": hw_rendersettings})
 
-        exporters.render_playblast(filepath=path, **kwargs)
+        exporters.render_playblast(path, **kwargs)
 
-        # Render thumbnail
-        self._render_thumbnail(instance, dir_path, start, end, width, height, hw_rendersettings)
+        # Collect the files
+        files = os.listdir(dir_path)
+        sequences = lib.collect_sequences(files)
 
-        # Create the full filename with the extension
-        if fileformat == "mp4" or fileformat == "mov":
-            full_filename = f"{filename}.{fileformat}"
-        else:
-            full_filename = self.generate_frame_list(filename, start, end, fileformat)
+        for seq_name, seq_files in sequences.items():
+            if not seq_files:
+                continue
 
-        # Check if the file(s) exist
-        if isinstance(full_filename, list):
-            check_file = full_filename[0]
-        else:
-            check_file = full_filename
+            # Sort files
+            if isinstance(seq_files, list):
+                seq_files.sort()
 
-        full_path = os.path.join(dir_path, check_file)
-        if not os.path.exists(full_path):
-            raise Exception(f"Review extraction failed. Expected file not found: {full_path}")
+            # Identify extension
+            ext = os.path.splitext(seq_files[0])[1].lstrip(".").lower()
 
-        alpha_exists = False
-        full_alpha_filename = None
-        if alpha:
-            alpha_filename = f"a_{filename}"
-            if fileformat == "mp4" or fileformat == "mov":
-                full_alpha_filename = f"{alpha_filename}.{fileformat}"
-            else:
-                full_alpha_filename = self.generate_frame_list(
-                    alpha_filename, start, end, fileformat
-                )
+            # Check for Alpha sequence
+            is_alpha = os.path.basename(seq_files[0]).lower().startswith("a_")
 
-            first_alpha_file = None
-            if isinstance(full_alpha_filename, list):
-                if full_alpha_filename:
-                    first_alpha_file = full_alpha_filename[0]
-            else:
-                first_alpha_file = full_alpha_filename
-
-            if first_alpha_file and os.path.exists(os.path.join(dir_path, first_alpha_file)):
-                alpha_exists = True
-
-        tags = ["review"]
-        # Add ftrack tag only if ftrack integration is active to avoid potential conflicts
-        if "ftrack" in instance.context.data.get("integrator_names", []):
-            tags.append("ftrackreview")
-
-        # Mark instance as review to ensure downstream collectors/integrators recognize it
-        instance.data["review"] = True
-
-        representation = {
-            "name": fileformat,
-            "ext": fileformat,
-            "files": full_filename,
-            "stagingDir": dir_path,
-            "tags": tags,
-            # Output name is often used by loaders or transcoders
-            "outputName": fileformat,
-        }
-
-        # Add frame metadata for all reviews to assist player context
-        representation.update({
-            "frameStart": start,
-            "frameEnd": end,
-            "fps": instance.data.get("fps", 25),
-        })
-
-        instance.data.setdefault("representations", []).append(representation)
-
-        if alpha_exists:
-            representation_alpha = {
-                "name": "alpha",
-                "ext": fileformat,
-                "files": full_alpha_filename,
+            # Main representation (sequence or movie)
+            representation = {
+                "name": "alpha" if is_alpha else ext,
+                "ext": ext,
+                "files": seq_files if len(seq_files) > 1 else seq_files[0],
                 "stagingDir": dir_path,
-                "output": "alpha",
-                "outputName": "alpha",
-                "data": {"output": "alpha"},
-                "tags": tags,
             }
-            instance.data["representations"].append(representation_alpha)
 
-        self.log.info(f"Extracted instance '{instance.name}' to: {path}.{fileformat}")
+            if is_alpha:
+                representation["outputName"] = "alpha"
 
-    def _render_thumbnail(self, instance, dir_path, start, end, width, height, hw_rendersettings):
-        mid_frame = int((start + end) / 2)
-        thumbnail_filename = "thumbnail.jpg"
-        thumbnail_path = os.path.join(dir_path, thumbnail_filename)
+            # If it is a video file, tag it as review
+            if ext in ["mp4", "mov"] and not is_alpha:
+                representation["tags"] = ["review", "ftrackreview"]
 
-        self.log.info(f"Rendering thumbnail to {thumbnail_path}")
+            instance.data.setdefault("representations", []).append(representation)
 
-        kwargs = {
-            "frame_start": mid_frame,
-            "frame_end": mid_frame,
-            "doc": instance.context.data["doc"],
-            "useAlpha": False,
-            "separate_alpha": False,
-            "file_format": "jpg",
-            "hw_rendersettings": hw_rendersettings
-        }
-        if width and height:
-            kwargs.update({"width": width, "height": height})
+            # Generate thumbnail if not alpha and sequence
+            if not is_alpha and len(seq_files) > 0:
+                thumb_filename = "thumbnail.jpg"
+                thumb_path = os.path.join(dir_path, thumb_filename)
 
-        exporters.render_playblast(filepath=thumbnail_path, **kwargs)
+                # Check if thumbnail already exists (e.g. from previous loop)
+                if not os.path.exists(thumb_path):
+                    # Pick middle frame
+                    middle_index = len(seq_files) // 2
+                    source_file = seq_files[middle_index]
+                    source_path = os.path.join(dir_path, source_file)
 
-        representation = {
-            "name": "thumbnail",
-            "ext": "jpg",
-            "files": thumbnail_filename,
-            "stagingDir": dir_path,
-            "tags": ["thumbnail"]
-        }
-        representation["tags"] = ["review", "preview", "ftrackreview"]
-        instance.data.setdefault("representations", []).append(representation)
+                    try:
+                        lib.generate_thumbnail(source_path, thumb_path)
 
-    def generate_frame_list(self, base_filename, start_frame, end_frame, file_format):
-        """
-        Generates a list of filenames for a sequence of frames.
+                        thumb_repre = {
+                            "name": "thumbnail",
+                            "ext": "jpg",
+                            "files": thumb_filename,
+                            "stagingDir": dir_path,
+                            "tags": ["thumbnail"]
+                        }
+                        instance.data.setdefault("representations", []).append(thumb_repre)
+                    except Exception as e:
+                        self.log.warning(f"Failed to generate thumbnail: {e}")
 
-        Args:
-            base_filename (str): The base name of the file (e.g., "shot_010_render_").
-            frame_start (int): The starting frame number.
-            frame_end (int): The ending frame number (inclusive).
-            file_format (str): The file extension without a dot (e.g., "exr").
+            # If it is an image sequence, we want to generate a review MP4
+            # Skip alpha sequences for review generation
+            if ext not in ["mp4", "mov"] and len(seq_files) > 1 and not is_alpha:
+                # Generate review
+                review_filename = f"{filename}.mp4"
+                review_path = os.path.join(dir_path, review_filename)
 
-        Returns:
-            frame_list: A list of formatted filenames.
-        """
-        frame_list = []
-        for frame in range(start_frame, end_frame + 1):
-            padded_frame = f"{frame:04d}"
-            frame_filename = f"{base_filename}{padded_frame}.{file_format}"
-            frame_list.append(frame_filename)
-            
-        return frame_list
+                # FPS
+                fps = instance.data.get("fps", doc.GetFps())
+
+                try:
+                    lib.generate_review(seq_files, review_path, fps=fps)
+
+                    review_repre = {
+                        "name": "mp4",
+                        "ext": "mp4",
+                        "files": review_filename,
+                        "stagingDir": dir_path,
+                        "preview": True,
+                        "tags": ["review", "ftrackreview"]
+                    }
+                    instance.data["representations"].append(review_repre)
+                    self.log.info(f"Generated review mp4: {review_path}")
+                except Exception as e:
+                    self.log.error(f"Failed to generate review mp4: {e}")
+
+        self.log.info(f"Extracted instance '{instance.name}'")

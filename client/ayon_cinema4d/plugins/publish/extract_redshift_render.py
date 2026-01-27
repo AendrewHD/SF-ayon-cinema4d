@@ -61,22 +61,9 @@ class ExtractRedshiftRender(publish.Extractor):
         bmp = c4d.bitmaps.BaseBitmap()
         bmp.Init(width, height)
 
-        # Initialize MovieSaver for Review
-        review_filename = f"{filename_base}_review.mp4"
-        review_path = os.path.join(staging_dir, review_filename)
-
         # Thumbnail Setup
         thumb_filename = "thumbnail.jpg"
         thumb_path = os.path.join(staging_dir, thumb_filename)
-        thumbnail_frame = int(frame_start) + (int(frame_end) - int(frame_start)) // 2
-
-        ms = c4d.bitmaps.MovieSaver()
-        # MP4 format ID is 1125
-        FILTER_MP4 = 1125
-
-        if ms.Open(review_path, bmp, fps, FILTER_MP4, c4d.BaseContainer(), c4d.SAVEBIT_ALPHA) != c4d.IMAGERESULT_OK:
-             self.log.warning("Could not open MovieSaver for review generation. Review will not be created.")
-             ms = None
 
         try:
             # Modify the RenderData Object Directly
@@ -137,21 +124,9 @@ class ExtractRedshiftRender(publish.Extractor):
                 if res != c4d.RENDERRESULT_OK:
                     raise RuntimeError(f"Render failed for frame {frame} with error {res}")
 
-                # Save thumbnail
-                if frame == thumbnail_frame:
-                    bmp.Save(thumb_path, c4d.FILTER_JPG, c4d.BaseContainer(), c4d.SAVEBIT_ALPHA)
 
-                # Write to review
-                # Note: Color management is skipped here (Linear -> sRGB conversion absent).
-                # The review will be raw linear if source is EXR.
-                # Improving this requires OCIO which is not currently available in this scope.
-                if ms:
-                    ms.Write(bmp)
 
         finally:
-            if ms:
-                ms.Close()
-
             # Restore previous active render data
             if prev_active_rd:
                 doc.SetActiveRenderData(prev_active_rd)
@@ -171,14 +146,30 @@ class ExtractRedshiftRender(publish.Extractor):
         if thumb_filename in files:
             files.remove(thumb_filename)
 
-        sequences = self.collect_sequences(files)
+        sequences = lib.collect_sequences(files)
 
         # Verify if any render files (other than review) were generated
-        render_files_found = any(k != f"{filename_base}_review.mp4" for k in sequences.keys())
-        if not render_files_found:
+        if not sequences:
              self.log.error("No render output files found. Redshift may have failed to save images, or the output path is incorrect.")
-             # We don't raise here to allow review to publish if it exists, but it's suspicious.
-             # Actually, if the main render failed, we should probably fail.
+
+        # Identify main sequence for thumbnail
+        main_seq_files = None
+        for seq_name, seq_files in sequences.items():
+             prefix = seq_name.split("#")[0]
+             is_alpha = os.path.basename(seq_files[0]).lower().startswith("a_")
+             if prefix == filename_base and not is_alpha and len(seq_files) > 0:
+                  main_seq_files = seq_files
+                  break
+
+        # Generate thumbnail from main sequence if it doesn't exist
+        if main_seq_files and not os.path.exists(thumb_path):
+            try:
+                middle_index = len(main_seq_files) // 2
+                source_file = main_seq_files[middle_index]
+                source_path = os.path.join(staging_dir, source_file)
+                lib.generate_thumbnail(source_path, thumb_path)
+            except Exception as e:
+                self.log.warning(f"Failed to generate thumbnail: {e}")
 
         # Add thumbnail representation if it exists
         if os.path.exists(thumb_path):
@@ -195,31 +186,54 @@ class ExtractRedshiftRender(publish.Extractor):
             if not seq_files:
                 continue
 
-            seq_files.sort()
+            # Sort files
+            if isinstance(seq_files, list):
+                seq_files.sort()
 
-            # Determine if this is the review file
-            if seq_name == f"{filename_base}_review.mp4":
-                repre = {
-                    "name": "mp4",
-                    "ext": "mp4",
-                    "files": seq_name,
-                    "stagingDir": staging_dir,
-                    "tags": ["review", "ftrackreview"]
-                }
-                instance.data.setdefault("representations", []).append(repre)
-                continue
+            # Identify extension
+            ext = os.path.splitext(seq_files[0])[1].lstrip(".").lower()
 
-            # It's a sequence
-            ext = os.path.splitext(seq_files[0])[1].lstrip(".")
+            # Check for Alpha sequence
+            is_alpha = os.path.basename(seq_files[0]).lower().startswith("a_")
 
             repre = {
-                "name": ext,
+                "name": "alpha" if is_alpha else ext,
                 "ext": ext,
                 "files": seq_files if len(seq_files) > 1 else seq_files[0],
                 "stagingDir": staging_dir,
             }
 
+            if is_alpha:
+                repre["outputName"] = "alpha"
+
             instance.data.setdefault("representations", []).append(repre)
+
+            # Generate review from sequence
+            # Only generate review for main pass (prefix matches filename_base)
+            prefix = seq_name.split("#")[0]
+            if (
+                ext not in ["mp4", "mov"]
+                and len(seq_files) > 1
+                and not is_alpha
+                and prefix == filename_base
+            ):
+                review_filename = f"{filename_base}_review.mp4"
+                review_path = os.path.join(staging_dir, review_filename)
+                try:
+                    lib.generate_review(seq_files, review_path, fps=fps)
+
+                    review_repre = {
+                        "name": "mp4",
+                        "ext": "mp4",
+                        "files": review_filename,
+                        "stagingDir": staging_dir,
+                        "preview": True,
+                        "tags": ["review", "ftrackreview"]
+                    }
+                    instance.data["representations"].append(review_repre)
+                    self.log.info(f"Generated review mp4: {review_path}")
+                except Exception as e:
+                    self.log.error(f"Failed to generate review mp4: {e}")
 
     def get_c4d_format(self, ext):
         formats = {
@@ -231,30 +245,3 @@ class ExtractRedshiftRender(publish.Extractor):
         }
         return formats.get(ext, 1016606)
 
-    def collect_sequences(self, files):
-        """
-        Group files into sequences.
-        Returns dict: { "sequence_key": [files...] }
-        For single files (like mp4), key is filename.
-        """
-        import collections
-        import re
-
-        sequences = collections.defaultdict(list)
-
-        # Regex to match frame numbers at end of name before extension
-        # e.g. name.0001.ext or name0001.ext
-        frame_pattern = re.compile(r'^(.*?)(\.?\d+)(\.[^.]+)$')
-
-        for f in files:
-            match = frame_pattern.match(f)
-            if match:
-                prefix, frame, ext = match.groups()
-                # Use prefix + ext as key
-                key = f"{prefix}#{ext}"
-                sequences[key].append(f)
-            else:
-                # Single file or unrecognised pattern
-                sequences[f].append(f)
-
-        return sequences
