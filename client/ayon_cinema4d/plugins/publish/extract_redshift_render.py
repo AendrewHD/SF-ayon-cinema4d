@@ -144,6 +144,14 @@ class ExtractRedshiftRender(publish.Extractor):
             if rd:
                 rd.Remove()
 
+        # Determine the integration product type (must act as 'render' for correct template usage)
+        # We check if we are in a 'redshiftRender' instance, and if so, masquerade as 'render'
+        # for integration purposes so it uses the {root}/{project}/{...}/render path.
+        if instance.data["productType"] == "redshiftRender":
+             instance.data["productType"] = "render"
+             # Also add 'render' to families if needed, but Integrate usually uses productType/family
+             instance.data["family"] = "render"
+
         # Collect generated files
         files = os.listdir(staging_dir)
         self.log.debug(f"Generated files: {files}")
