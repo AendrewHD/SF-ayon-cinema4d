@@ -194,15 +194,23 @@ class ExtractRedshiftRender(publish.Extractor):
             instance.data.setdefault("representations", []).append(repre)
 
             # Generate review from sequence
-            if ext not in ["mp4", "mov"] and len(seq_files) > 1 and not is_alpha:
+            # Only generate review for main pass (prefix matches filename_base)
+            prefix = seq_name.split("#")[0]
+            if (
+                ext not in ["mp4", "mov"]
+                and len(seq_files) > 1
+                and not is_alpha
+                and prefix == filename_base
+            ):
                 review_filename = f"{filename_base}_review.mp4"
                 review_path = os.path.join(staging_dir, review_filename)
                 try:
                     lib.generate_review(seq_files, review_path, fps=fps)
 
                     review_repre = {
-                        "name": "mp4",
+                        "name": "review",
                         "ext": "mp4",
+                        "outputName": "review",
                         "files": review_filename,
                         "stagingDir": staging_dir,
                         "tags": ["review", "ftrackreview"]
