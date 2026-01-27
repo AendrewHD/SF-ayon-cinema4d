@@ -65,6 +65,11 @@ class ExtractRedshiftRender(publish.Extractor):
         review_filename = f"{filename_base}_review.mp4"
         review_path = os.path.join(staging_dir, review_filename)
 
+        # Thumbnail Setup
+        thumb_filename = "thumbnail.jpg"
+        thumb_path = os.path.join(staging_dir, thumb_filename)
+        thumbnail_frame = int(frame_start) + (int(frame_end) - int(frame_start)) // 2
+
         ms = c4d.bitmaps.MovieSaver()
         # MP4 format ID is 1125
         FILTER_MP4 = 1125
@@ -132,6 +137,10 @@ class ExtractRedshiftRender(publish.Extractor):
                 if res != c4d.RENDERRESULT_OK:
                     raise RuntimeError(f"Render failed for frame {frame} with error {res}")
 
+                # Save thumbnail
+                if frame == thumbnail_frame:
+                    bmp.Save(thumb_path, c4d.FILTER_JPG, c4d.BaseContainer(), c4d.SAVEBIT_ALPHA)
+
                 # Write to review
                 # Note: Color management is skipped here (Linear -> sRGB conversion absent).
                 # The review will be raw linear if source is EXR.
@@ -159,6 +168,9 @@ class ExtractRedshiftRender(publish.Extractor):
         files = os.listdir(staging_dir)
         self.log.debug(f"Generated files: {files}")
 
+        if thumb_filename in files:
+            files.remove(thumb_filename)
+
         sequences = self.collect_sequences(files)
 
         # Verify if any render files (other than review) were generated
@@ -167,6 +179,17 @@ class ExtractRedshiftRender(publish.Extractor):
              self.log.error("No render output files found. Redshift may have failed to save images, or the output path is incorrect.")
              # We don't raise here to allow review to publish if it exists, but it's suspicious.
              # Actually, if the main render failed, we should probably fail.
+
+        # Add thumbnail representation if it exists
+        if os.path.exists(thumb_path):
+            repre = {
+                "name": "thumbnail",
+                "ext": "jpg",
+                "files": thumb_filename,
+                "stagingDir": staging_dir,
+                "tags": ["thumbnail"]
+            }
+            instance.data.setdefault("representations", []).append(repre)
 
         for seq_name, seq_files in sequences.items():
             if not seq_files:
