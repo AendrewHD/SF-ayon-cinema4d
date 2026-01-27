@@ -60,12 +60,12 @@ class CreateRedshiftRender(plugin.Cinema4DCreator):
 
         # Get Task Attributes for defaults
         task_entity = self.create_context.get_current_task_entity()
-        attrib = task_entity["attrib"]
+        attrib = task_entity["attrib"] if task_entity else {}
 
         # Add additional attributes
         defs.extend([
             UISeparatorDef(),
-            UILabelDef("Image Size"),
+            UILabelDef(label="Image Size"),
             NumberDef(
                 "renderWidth",
                 label="Width",
@@ -80,7 +80,7 @@ class CreateRedshiftRender(plugin.Cinema4DCreator):
             ),
 
             UISeparatorDef(),
-            UILabelDef("Redshift Options"),
+            UILabelDef(label="Redshift Options"),
 
             EnumDef(
                 "redshift_renderer",
@@ -89,7 +89,7 @@ class CreateRedshiftRender(plugin.Cinema4DCreator):
                 default="Bucket"
             ),
 
-            UILabelDef("Sampling"),
+            UILabelDef(label="Sampling"),
             NumberDef(
                 "redshift_threshold",
                 label="Threshold",
@@ -109,7 +109,7 @@ class CreateRedshiftRender(plugin.Cinema4DCreator):
                 decimals=0
             ),
 
-            UILabelDef("Global Illumination"),
+            UILabelDef(label="Global Illumination"),
             NumberDef(
                 "redshift_gi_bounces",
                 label="GI Bounces",
@@ -117,7 +117,7 @@ class CreateRedshiftRender(plugin.Cinema4DCreator):
                 decimals=0
             ),
 
-            UILabelDef("Output"),
+            UILabelDef(label="Output"),
             BoolDef(
                 "redshift_multipart_exr",
                 label="Multipart EXR",
@@ -129,7 +129,7 @@ class CreateRedshiftRender(plugin.Cinema4DCreator):
                 default=True
             ),
 
-            UILabelDef("Global Overrides"),
+            UILabelDef(label="Global Overrides"),
             BoolDef("redshift_glob_displacement", label="Displacement", default=True),
             BoolDef("redshift_glob_specular", label="Specular", default=True),
             BoolDef("redshift_glob_reflections", label="Reflections", default=True),
@@ -139,7 +139,7 @@ class CreateRedshiftRender(plugin.Cinema4DCreator):
             BoolDef("redshift_glob_emission", label="Emission", default=True),
             BoolDef("redshift_glob_motion_blur", label="Motion Blur", default=False),
 
-            UILabelDef("Denoise"),
+            UILabelDef(label="Denoise"),
             BoolDef(
                 "redshift_denoise_enabled",
                 label="Denoise Enabled",
