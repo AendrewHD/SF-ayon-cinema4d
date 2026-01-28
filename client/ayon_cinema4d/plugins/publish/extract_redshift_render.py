@@ -296,8 +296,6 @@ class ExtractRedshiftRender(publish.Extractor):
             "redshift_glob_illumination": "REDSHIFT_RENDERER_GI_ENABLED",
             "redshift_gi_bounces": "REDSHIFT_RENDERER_COMBINED_GI_BOUNCES",
             "redshift_threshold": "REDSHIFT_RENDERER_UNIFIED_ADAPTIVE_ERROR_THRESHOLD",
-            "redshift_samples_min": "REDSHIFT_RENDERER_UNIFIED_MIN_SAMPLES",
-            "redshift_samples_max": "REDSHIFT_RENDERER_UNIFIED_MAX_SAMPLES",
         }
 
         # For GI and Sampling, since we don't have definitive IDs from the user,
