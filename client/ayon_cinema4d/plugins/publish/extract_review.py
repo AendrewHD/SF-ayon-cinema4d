@@ -111,10 +111,6 @@ class Cinema4DExtractReview(publish.Extractor):
             if is_alpha:
                 representation["outputName"] = "alpha"
 
-            # If it is a video file, tag it as review
-            if ext in ["mp4", "mov"] and not is_alpha:
-                representation["tags"] = ["review", "ftrackreview"]
-
             instance.data.setdefault("representations", []).append(representation)
 
             # Generate thumbnail if not alpha and sequence
@@ -143,30 +139,5 @@ class Cinema4DExtractReview(publish.Extractor):
                     except Exception as e:
                         self.log.warning(f"Failed to generate thumbnail: {e}")
 
-            # If it is an image sequence, we want to generate a review MP4
-            # Skip alpha sequences for review generation
-            if ext not in ["mp4", "mov"] and len(seq_files) > 1 and not is_alpha:
-                # Generate review
-                review_filename = f"{filename}.mp4"
-                review_path = os.path.join(dir_path, review_filename)
-
-                # FPS
-                fps = instance.data.get("fps", doc.GetFps())
-
-                try:
-                    lib.generate_review(seq_files, review_path, fps=fps)
-
-                    review_repre = {
-                        "name": "mp4",
-                        "ext": "mp4",
-                        "files": review_filename,
-                        "stagingDir": dir_path,
-                        "preview": True,
-                        "tags": ["review", "ftrackreview"]
-                    }
-                    instance.data["representations"].append(review_repre)
-                    self.log.info(f"Generated review mp4: {review_path}")
-                except Exception as e:
-                    self.log.error(f"Failed to generate review mp4: {e}")
 
         self.log.info(f"Extracted instance '{instance.name}'")
