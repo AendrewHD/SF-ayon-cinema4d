@@ -103,9 +103,6 @@ class ExtractRedshiftRender(publish.Extractor):
             rd[c4d.RDATA_FRAMEFROM] = frame_start
             rd[c4d.RDATA_FRAMETO] = frame_end
             
-            # Update time settings on the object
-            rd.Message(c4d.MSG_UPDATE)
-            
             # Render using RenderDocument
             # We pass the Container of the Active Render Data (which is `rd`)
             # RenderDocument(doc, settings, bmp, flags)
@@ -121,7 +118,7 @@ class ExtractRedshiftRender(publish.Extractor):
             )
 
             if res != c4d.RENDERRESULT_OK:
-                raise RuntimeError(f"Render failed for frame {frame} with error {res}")
+                raise RuntimeError(f"Render failed with error {res}")
 
         finally:
             # Restore previous active render data
@@ -294,11 +291,9 @@ class ExtractRedshiftRender(publish.Extractor):
             "redshift_glob_displacement": "REDSHIFT_RENDERER_DISPLACEMENT_ENABLE",
             "redshift_multipart_exr": "REDSHIFT_RENDERER_AOV_MULTIPART",
             "redshift_aovs_export": "REDSHIFT_RENDERER_AOV_GLOBAL_MODE",
-            # Let's handle GI. User didn't give constant. I'll try generic names.
-            "redshift_glob_illumination": "REDSHIFT_RENDERER_GI_ENABLED", # Guess
-            # Others from previous impl
-            "redshift_gi_bounces": "REDSHIFT_RENDERER_COMBINED_GI_BOUNCES", # Guess
-            "redshift_threshold": "RREDSHIFT_RENDERER_UNIFIED_ADAPTIVE_ERROR_THRESHOLD", # Guess
+            "redshift_glob_illumination": "REDSHIFT_RENDERER_GI_ENABLED",
+            "redshift_gi_bounces": "REDSHIFT_RENDERER_COMBINED_GI_BOUNCES",
+            "redshift_threshold": "REDSHIFT_RENDERER_UNIFIED_ADAPTIVE_ERROR_THRESHOLD",
         }
 
         # For GI and Sampling, since we don't have definitive IDs from the user,
