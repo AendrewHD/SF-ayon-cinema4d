@@ -27,6 +27,7 @@ class Cinema4DExtractReview(publish.Extractor):
         # Collect the start and end including handles
         start = instance.data["frameStartHandle"]
         end = instance.data["frameEndHandle"]
+        fps = instance.data["fps"]
         
 
         # TODO: Allow using members for isolate view
@@ -97,7 +98,7 @@ class Cinema4DExtractReview(publish.Extractor):
 
         for seq_name, seq_files in sequences.items():
             if not seq_files:
-                continue
+                continue;
 
             # Sort files
             if isinstance(seq_files, list):
@@ -111,14 +112,21 @@ class Cinema4DExtractReview(publish.Extractor):
 
             # Main representation (sequence or movie)
             representation = {
-                "name": "alpha" if is_alpha else ext,
+                "name": ext,
                 "ext": ext,
                 "files": seq_files if len(seq_files) > 1 else seq_files[0],
                 "stagingDir": dir_path,
+                "frameStart": start,
+                "frameEnd": end,
+                "fps": fps,
+                "tags": ["review"]
             }
 
             if is_alpha:
                 representation["outputName"] = "alpha"
+            
+            if representation["ext"] == "mp4":
+                representation["tags"].append("review")
 
             instance.data.setdefault("representations", []).append(representation)
 
