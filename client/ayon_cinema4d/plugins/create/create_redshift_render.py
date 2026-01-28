@@ -1,4 +1,10 @@
-from ayon_core.lib import EnumDef, BoolDef
+from ayon_core.lib import (
+    EnumDef,
+    BoolDef,
+    NumberDef,
+    UILabelDef,
+    UISeparatorDef
+)
 from ayon_cinema4d.api import (
     lib,
     plugin
@@ -52,8 +58,101 @@ class CreateRedshiftRender(plugin.Cinema4DCreator):
         # Collect basic animation attributes including handles and fps
         defs = lib.collect_animation_defs(self.create_context, fps=True)
 
+        # Get Task Attributes for defaults
+        task_entity = self.create_context.get_current_task_entity()
+        attrib = task_entity["attrib"] if task_entity else {}
+
         # Add additional attributes
         defs.extend([
+            UISeparatorDef(),
+            UILabelDef(label="Image Size"),
+            NumberDef(
+                "renderWidth",
+                label="Width",
+                default=int(attrib.get("resolutionWidth", 1920)),
+                decimals=0
+            ),
+            NumberDef(
+                "renderHeight",
+                label="Height",
+                default=int(attrib.get("resolutionHeight", 1080)),
+                decimals=0
+            ),
+
+            UISeparatorDef(),
+            UILabelDef(label="Redshift Options"),
+
+            EnumDef(
+                "redshift_renderer",
+                label="Renderer",
+                items=["Bucket", "Progressive"],
+                default="Bucket"
+            ),
+
+            UILabelDef(label="Sampling"),
+            NumberDef(
+                "redshift_threshold",
+                label="Threshold",
+                default=0.01,
+                decimals=4
+            ),
+            NumberDef(
+                "redshift_samples_min",
+                label="Samples Min",
+                default=16,
+                decimals=0
+            ),
+            NumberDef(
+                "redshift_samples_max",
+                label="Samples Max",
+                default=64,
+                decimals=0
+            ),
+
+            UILabelDef(label="Global Illumination"),
+            BoolDef(
+                "redshift_glob_illumination",
+                label="Global Illumination",
+                default=True
+            ),
+            NumberDef(
+                "redshift_gi_bounces",
+                label="GI Bounces",
+                default=3,
+                decimals=0
+            ),
+
+            UILabelDef(label="Output"),
+            BoolDef(
+                "redshift_multipart_exr",
+                label="Multipart EXR",
+                default=True
+            ),
+            BoolDef(
+                "redshift_aovs_export",
+                label="Export AOVs",
+                default=True
+            ),
+
+            UILabelDef(label="Global Overrides"),
+            BoolDef("redshift_glob_reflections", label="Reflections", default=True),
+            BoolDef("redshift_glob_refractions", label="Refractions", default=True),
+            BoolDef("redshift_glob_sss", label="Subsurface Scattering", default=True),
+            BoolDef("redshift_glob_emission", label="Emission", default=True),
+            BoolDef("redshift_glob_tessellation", label="Tessellation", default=True),
+            BoolDef("redshift_glob_displacement", label="Displacement", default=True),
+
+            UILabelDef(label="Motion Blur"),
+            BoolDef("redshift_glob_motion_blur", label="Motion Blur", default=False),
+
+            UILabelDef(label="Denoise"),
+            BoolDef(
+                "redshift_denoise_enabled",
+                label="Denoise Enabled",
+                default=False
+            ),
+
+            UISeparatorDef(),
             EnumDef(
                 "imageFormat",
                 label="Image Format",
