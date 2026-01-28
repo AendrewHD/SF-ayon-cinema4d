@@ -13,6 +13,14 @@ class Cinema4DExtractReview(publish.Extractor):
     families = ["review"]
 
     def process(self, instance):
+        # We only want to run this extractor for the "review" instance
+        # which is the one that generates the playblast.
+        # Other instances (like Redshift) might have the "review" family
+        # added to trigger the global ExtractReview plugin, but we don't
+        # want to generate a playblast for them.
+        if instance.data.get("family") != "review":
+            self.log.debug("Skipping Playblast extraction for non-review family instance.")
+            return
 
         doc: c4d.BaseDocument = instance.context.data["doc"]
 
@@ -71,6 +79,7 @@ class Cinema4DExtractReview(publish.Extractor):
             "doc": doc,
             "useAlpha": alpha,
             "separate_alpha": separate_alpha,
+            "hw_rendersettings": hw_rendersettings,
         }
         if width is not None and height is not None:
             kwargs.update({
