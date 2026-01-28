@@ -31,8 +31,8 @@ class ExtractRedshiftRender(publish.Extractor):
         frame_start = instance.data["frameStartHandle"]
         frame_end = instance.data["frameEndHandle"]
         fps = instance.data["fps"]
-        width = int(instance.data.get("resolutionWidth", 1920))
-        height = int(instance.data.get("resolutionHeight", 1080))
+        width = int(instance.data.get("renderWidth") or instance.data.get("resolutionWidth", 1920))
+        height = int(instance.data.get("renderHeight") or instance.data.get("resolutionHeight", 1080))
         image_format = instance.data.get("imageFormat", "exr")
 
         # Staging dir
@@ -70,6 +70,9 @@ class ExtractRedshiftRender(publish.Extractor):
 
             # Set Renderer to Redshift
             rd[c4d.RDATA_RENDERENGINE] = REDSHIFT_RENDERER_ID
+
+            # Apply Redshift Settings from Instance
+            self._apply_redshift_settings(rd, instance.data)
 
             # Set Resolution
             rd[c4d.RDATA_XRES] = float(width)
@@ -245,3 +248,82 @@ class ExtractRedshiftRender(publish.Extractor):
         }
         return formats.get(ext, 1016606)
 
+    def _apply_redshift_settings(self, rd, data):
+        """Apply Redshift settings from instance data to the RenderData VideoPost."""
+        # Find Redshift VideoPost
+        vp = rd.GetFirstVideoPost()
+        redshift_vp = None
+        while vp:
+            if vp.CheckType(REDSHIFT_RENDERER_ID):
+                redshift_vp = vp
+                break
+            vp = vp.GetNext()
+
+        if not redshift_vp:
+            # If not found (unlikely if we just set the engine), try to create/add it?
+            # Setting RDATA_RENDERENGINE usually ensures it's active/created, but finding it might require
+            # the scene to update. We called EventAdd() and inserted rd, but maybe we need to fetch it again?
+            # Actually, `rd` is a clone we inserted. It should have the VP if the original did,
+            # or if setting the engine added it.
+            # If the original scene wasn't Redshift, setting RDATA_RENDERENGINE might not immediately spawn the VP in Python?
+            # Let's log if missing.
+            self.log.warning("Redshift VideoPost not found in RenderData. Cannot apply specific settings.")
+            return
+
+        self.log.info("Applying Redshift settings...")
+
+        # Mapping: Instance Key -> C4D Constant Name (Attribute on c4d module)
+        # Note: We use string names for the constants because we rely on c4d module having them.
+        # If they are missing, we log a warning.
+
+        # User provided constants:
+        # Redshift[c4d.REDSHIFT_RENDERER_DENOISE_ENABLED]
+        # Redshift[c4d.REDSHIFT_RENDERER_MOTION_BLUR_ENABLED]
+        # Redshift[c4d.REDSHIFT_RENDERER_REFLECTIONS_ENABLE]
+        # Redshift[c4d.REDSHIFT_RENDERER_SUBSURFACE_SCATTERING_ENABLE]
+        # Redshift[c4d.REDSHIFT_RENDERER_REFRACTIONS_ENABLE]
+        # Redshift[c4d.REDSHIFT_RENDERER_EMISSION_ENABLE]
+        # Redshift[c4d.REDSHIFT_RENDERER_TESSELLATION_ENABLE]
+        # Redshift[c4d.REDSHIFT_RENDERER_DISPLACEMENT_ENABLE]
+        # Redshift[c4d.REDSHIFT_RENDERER_AOV_MULTIPART]
+        # Redshift[c4d.REDSHIFT_RENDERER_AOV_GLOBAL_MODE]
+
+        mapping = {
+            "redshift_denoise_enabled": "REDSHIFT_RENDERER_DENOISE_ENABLED",
+            "redshift_glob_motion_blur": "REDSHIFT_RENDERER_MOTION_BLUR_ENABLED",
+            "redshift_glob_reflections": "REDSHIFT_RENDERER_REFLECTIONS_ENABLE",
+            "redshift_glob_sss": "REDSHIFT_RENDERER_SUBSURFACE_SCATTERING_ENABLE",
+            "redshift_glob_refractions": "REDSHIFT_RENDERER_REFRACTIONS_ENABLE",
+            "redshift_glob_emission": "REDSHIFT_RENDERER_EMISSION_ENABLE",
+            "redshift_glob_tessellation": "REDSHIFT_RENDERER_TESSELLATION_ENABLE",
+            "redshift_glob_displacement": "REDSHIFT_RENDERER_DISPLACEMENT_ENABLE",
+            "redshift_multipart_exr": "REDSHIFT_RENDERER_AOV_MULTIPART",
+            "redshift_aovs_export": "REDSHIFT_RENDERER_AOV_GLOBAL_MODE",
+            # Let's handle GI. User didn't give constant. I'll try generic names.
+            "redshift_glob_illumination": "REDSHIFT_RENDERER_GLOBAL_ILLUMINATION_ENABLE", # Guess
+            # Others from previous impl
+            "redshift_gi_bounces": "REDSHIFT_RENDERER_GI_NUM_BOUNCES", # Guess
+            "redshift_threshold": "REDSHIFT_RENDERER_UNIFIED_THRESHOLD", # Guess
+            "redshift_samples_min": "REDSHIFT_RENDERER_UNIFIED_MIN_SAMPLES", # Guess
+            "redshift_samples_max": "REDSHIFT_RENDERER_UNIFIED_MAX_SAMPLES", # Guess
+        }
+
+        # For GI and Sampling, since we don't have definitive IDs from the user,
+        # we will attempt to set them ONLY if we can find the constant.
+        # If not, we skip them to avoid errors.
+
+        # Special handling for AOV export if needed?
+        # "multipart exr doesnt check in the AOV render settings" -> Handled by redshift_multipart_exr mapping.
+
+        for key, const_name in mapping.items():
+            if key in data:
+                val = data[key]
+                if hasattr(c4d, const_name):
+                    param_id = getattr(c4d, const_name)
+                    try:
+                        redshift_vp[param_id] = val
+                        self.log.debug(f"Set {const_name} to {val}")
+                    except Exception as e:
+                         self.log.warning(f"Failed to set {const_name}: {e}")
+                else:
+                    self.log.debug(f"Constant c4d.{const_name} not found. Skipping {key}.")

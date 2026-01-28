@@ -110,6 +110,11 @@ class CreateRedshiftRender(plugin.Cinema4DCreator):
             ),
 
             UILabelDef(label="Global Illumination"),
+            BoolDef(
+                "redshift_glob_illumination",
+                label="Global Illumination",
+                default=True
+            ),
             NumberDef(
                 "redshift_gi_bounces",
                 label="GI Bounces",
@@ -130,13 +135,14 @@ class CreateRedshiftRender(plugin.Cinema4DCreator):
             ),
 
             UILabelDef(label="Global Overrides"),
-            BoolDef("redshift_glob_displacement", label="Displacement", default=True),
-            BoolDef("redshift_glob_specular", label="Specular", default=True),
             BoolDef("redshift_glob_reflections", label="Reflections", default=True),
             BoolDef("redshift_glob_refractions", label="Refractions", default=True),
-            BoolDef("redshift_glob_shadows", label="Shadows", default=True),
             BoolDef("redshift_glob_sss", label="Subsurface Scattering", default=True),
             BoolDef("redshift_glob_emission", label="Emission", default=True),
+            BoolDef("redshift_glob_tessellation", label="Tessellation", default=True),
+            BoolDef("redshift_glob_displacement", label="Displacement", default=True),
+
+            UILabelDef(label="Motion Blur"),
             BoolDef("redshift_glob_motion_blur", label="Motion Blur", default=False),
 
             UILabelDef(label="Denoise"),
