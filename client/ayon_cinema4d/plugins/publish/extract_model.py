@@ -5,14 +5,14 @@ from ayon_core.pipeline import publish
 from ayon_cinema4d.api import lib, exporters
 
 
-class ExtractAlembic(publish.Extractor):
+class ExtractModel(publish.Extractor):
     """Extract a Camera as Alembic.
 
     The cameras gets baked to world space by default. Only when the instance's
     `bakeToWorldSpace` is set to False it will include its full hierarchy.
     """
 
-    label = "Alembic"
+    label = "Extract Model"
     hosts = ["cinema4d"]
     families = ["pointcache"]
 
@@ -24,7 +24,7 @@ class ExtractAlembic(publish.Extractor):
         start = instance.data["frameStartHandle"]
         end = instance.data["frameEndHandle"]
         step = instance.data.get("step", 1)
-        bake_to_worldspace = instance.data("bakeToWorldSpace", True)
+        bake_to_worldspace = instance.data.get("bakeToWorldSpace", True)
 
         nodes = instance[:]
         # Define extract output file path
@@ -65,10 +65,9 @@ class ExtractAlembic(publish.Extractor):
         return nodes
 
 
-class ExtractCameraAlembic(ExtractAlembic):
+class ExtractCameraAlembic(ExtractModel):
     label = "Camera (Alembic)"
     families = ["camera"]
 
     def filter_objects(self, nodes):
-        return [obj for obj in nodes if obj.GetType() == c4d.CameraObject]
-
+        return [obj for obj in nodes if obj.GetType() == c4d.Ocamera]

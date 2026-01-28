@@ -11,13 +11,13 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class IncrementCurrentFile(pyblish.api.ContextPlugin,
+class IncrementWorkfile(pyblish.api.ContextPlugin,
                            OptionalPyblishPluginMixin):
     """Increment the current file.
 
     Saves the current scene with an increased version number.
     """
-    label = "Increment current file"
+    label = "Increment Workfile"
     order = pyblish.api.IntegratorOrder + 9.0
     families = ["*"]
     hosts = ["cinema4d"]

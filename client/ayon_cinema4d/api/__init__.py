@@ -1,4 +1,4 @@
-from .pipeline import (
+from .host import (
     Cinema4DHost
 )
 
