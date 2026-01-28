@@ -128,7 +128,6 @@ class ExtractRedshiftRender(publish.Extractor):
 
             # Clean up the temporary render data
             if rd:
-                return
                 rd.Remove()
 
         # Remove the logic that changes family to 'render' here, as it triggers Deadline.
