@@ -11,7 +11,7 @@ def get_document_path(doc: c4d.documents.BaseDocument):
     return
 
 
-class SaveCurrentScene(pyblish.api.ContextPlugin):
+class ExtractSaveScene(pyblish.api.ContextPlugin):
     """Save current scene"""
 
     label = "Save current file"
