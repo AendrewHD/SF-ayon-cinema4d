@@ -57,6 +57,9 @@ class CreateRedshiftRender(plugin.Cinema4DCreator):
 
         # Collect basic animation attributes including handles and fps
         defs = lib.collect_animation_defs(self.create_context, fps=True)
+        for definition in defs:
+            if definition.key == "review":
+                definition.default = False
 
         # Get Task Attributes for defaults
         task_entity = self.create_context.get_current_task_entity()

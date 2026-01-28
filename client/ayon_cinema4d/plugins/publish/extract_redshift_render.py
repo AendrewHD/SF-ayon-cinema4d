@@ -11,7 +11,7 @@ REDSHIFT_RENDERER_ID = 1036219
 class ExtractRedshiftRender(publish.Extractor):
     label = "Render Redshift"
     hosts = ["cinema4d"]
-    families = ["render"]
+    families = ["redshiftRender"]
 
     def process(self, instance):
         # SKIP PROCESSING IF FARM RENDERING IS REQUESTED
