@@ -96,6 +96,18 @@ class CreateRedshiftRender(plugin.Cinema4DCreator):
                 default=0.01,
                 decimals=4
             ),
+            NumberDef(
+                "redshift_samples_min",
+                label="Samples Min",
+                default=16,
+                decimals=0
+            ),
+            NumberDef(
+                "redshift_samples_max",
+                label="Samples Max",
+                default=64,
+                decimals=0
+            ),
 
             UILabelDef(label="Global Illumination"),
             BoolDef(

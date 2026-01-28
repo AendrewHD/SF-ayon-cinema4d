@@ -90,19 +90,20 @@ class ExtractRedshiftRender(publish.Extractor):
             rd[c4d.RDATA_SAVEIMAGE] = True
             rd[c4d.RDATA_GLOBALSAVE] = True
 
-            # Force frame sequence manual to allow frame-by-frame control if needed
+            # Force frame sequence manual
             rd[c4d.RDATA_FRAMESEQUENCE] = c4d.RDATA_FRAMESEQUENCE_MANUAL
+
+            # Set frame range
+            start_time = c4d.BaseTime(frame_start, fps)
+            end_time = c4d.BaseTime(frame_end, fps)
+            rd[c4d.RDATA_FRAMEFROM] = start_time
+            rd[c4d.RDATA_FRAMETO] = end_time
 
             # Update the object
             rd.Message(c4d.MSG_UPDATE)
 
-            self.log.debug(f"Rendering")
+            self.log.debug("Rendering")
 
-            # Set frame for this render pass
-            # RDATA_FRAMEFROM/TO expect BaseTime
-            rd[c4d.RDATA_FRAMEFROM] = frame_start
-            rd[c4d.RDATA_FRAMETO] = frame_end
-            
             # Render using RenderDocument
             # We pass the Container of the Active Render Data (which is `rd`)
             # RenderDocument(doc, settings, bmp, flags)
@@ -120,10 +121,12 @@ class ExtractRedshiftRender(publish.Extractor):
             if res != c4d.RENDERRESULT_OK:
                 raise RuntimeError(f"Render failed with error {res}")
 
+
+
         finally:
             # Restore previous active render data
             if prev_active_rd:
-                #doc.SetActiveRenderData(prev_active_rd)
+                doc.SetActiveRenderData(prev_active_rd)
                 c4d.EventAdd()
 
             # Clean up the temporary render data
@@ -293,6 +296,8 @@ class ExtractRedshiftRender(publish.Extractor):
             "redshift_glob_illumination": "REDSHIFT_RENDERER_GI_ENABLED",
             "redshift_gi_bounces": "REDSHIFT_RENDERER_COMBINED_GI_BOUNCES",
             "redshift_threshold": "REDSHIFT_RENDERER_UNIFIED_ADAPTIVE_ERROR_THRESHOLD",
+            "redshift_samples_min": "REDSHIFT_RENDERER_UNIFIED_MIN_SAMPLES",
+            "redshift_samples_max": "REDSHIFT_RENDERER_UNIFIED_MAX_SAMPLES",
         }
 
         # For GI and Sampling, since we don't have definitive IDs from the user,
