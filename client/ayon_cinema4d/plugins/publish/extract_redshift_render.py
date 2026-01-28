@@ -117,6 +117,7 @@ class ExtractRedshiftRender(publish.Extractor):
 
                 # IMPORTANT: Removing RENDERFLAGS_NODOCUMENTCLONE allows C4D to handle the scene translation
                 # which might be critical for Redshift to pick up the active render data settings correctly.
+                pass
                 res = c4d.documents.RenderDocument(
                     doc,
                     rd.GetData(),
@@ -132,11 +133,12 @@ class ExtractRedshiftRender(publish.Extractor):
         finally:
             # Restore previous active render data
             if prev_active_rd:
-                doc.SetActiveRenderData(prev_active_rd)
+                #doc.SetActiveRenderData(prev_active_rd)
                 c4d.EventAdd()
 
             # Clean up the temporary render data
             if rd:
+                return
                 rd.Remove()
 
         # Remove the logic that changes family to 'render' here, as it triggers Deadline.
