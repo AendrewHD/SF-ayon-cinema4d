@@ -13,12 +13,21 @@ class Cinema4DExtractReview(publish.Extractor):
     families = ["review"]
 
     def process(self, instance):
+        # We only want to run this extractor for the "review" instance
+        # which is the one that generates the playblast.
+        # Other instances (like Redshift) might have the "review" family
+        # added to trigger the global ExtractReview plugin, but we don't
+        # want to generate a playblast for them.
+        if instance.data.get("family") != "review":
+            self.log.debug("Skipping Playblast extraction for non-review family instance.")
+            return
 
         doc: c4d.BaseDocument = instance.context.data["doc"]
 
         # Collect the start and end including handles
         start = instance.data["frameStartHandle"]
         end = instance.data["frameEndHandle"]
+        fps = instance.data["fps"]
         
 
         # TODO: Allow using members for isolate view
@@ -71,6 +80,7 @@ class Cinema4DExtractReview(publish.Extractor):
             "doc": doc,
             "useAlpha": alpha,
             "separate_alpha": separate_alpha,
+            "hw_rendersettings": hw_rendersettings,
         }
         if width is not None and height is not None:
             kwargs.update({
@@ -88,7 +98,7 @@ class Cinema4DExtractReview(publish.Extractor):
 
         for seq_name, seq_files in sequences.items():
             if not seq_files:
-                continue
+                continue;
 
             # Sort files
             if isinstance(seq_files, list):
@@ -102,18 +112,21 @@ class Cinema4DExtractReview(publish.Extractor):
 
             # Main representation (sequence or movie)
             representation = {
-                "name": "alpha" if is_alpha else ext,
+                "name": ext,
                 "ext": ext,
                 "files": seq_files if len(seq_files) > 1 else seq_files[0],
                 "stagingDir": dir_path,
+                "frameStart": start,
+                "frameEnd": end,
+                "fps": fps,
+                "tags": ["review"]
             }
 
             if is_alpha:
                 representation["outputName"] = "alpha"
-
-            # If it is a video file, tag it as review
-            if ext in ["mp4", "mov"] and not is_alpha:
-                representation["tags"] = ["review", "ftrackreview"]
+            
+            if representation["ext"] == "mp4":
+                representation["tags"].append("review")
 
             instance.data.setdefault("representations", []).append(representation)
 
@@ -143,30 +156,5 @@ class Cinema4DExtractReview(publish.Extractor):
                     except Exception as e:
                         self.log.warning(f"Failed to generate thumbnail: {e}")
 
-            # If it is an image sequence, we want to generate a review MP4
-            # Skip alpha sequences for review generation
-            if ext not in ["mp4", "mov"] and len(seq_files) > 1 and not is_alpha:
-                # Generate review
-                review_filename = f"{filename}.mp4"
-                review_path = os.path.join(dir_path, review_filename)
-
-                # FPS
-                fps = instance.data.get("fps", doc.GetFps())
-
-                try:
-                    lib.generate_review(seq_files, review_path, fps=fps)
-
-                    review_repre = {
-                        "name": "mp4",
-                        "ext": "mp4",
-                        "files": review_filename,
-                        "stagingDir": dir_path,
-                        "preview": True,
-                        "tags": ["review", "ftrackreview"]
-                    }
-                    instance.data["representations"].append(review_repre)
-                    self.log.info(f"Generated review mp4: {review_path}")
-                except Exception as e:
-                    self.log.error(f"Failed to generate review mp4: {e}")
 
         self.log.info(f"Extracted instance '{instance.name}'")

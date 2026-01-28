@@ -214,23 +214,10 @@ class ExtractRedshiftRender(publish.Extractor):
                 and not is_alpha
                 and prefix == filename_base
             ):
-                review_filename = f"{filename_base}_review.mp4"
-                review_path = os.path.join(staging_dir, review_filename)
-                try:
-                    lib.generate_review(seq_files, review_path, fps=fps)
-
-                    review_repre = {
-                        "name": "mp4",
-                        "ext": "mp4",
-                        "files": review_filename,
-                        "stagingDir": staging_dir,
-                        "preview": True,
-                        "tags": ["review", "ftrackreview"]
-                    }
-                    instance.data["representations"].append(review_repre)
-                    self.log.info(f"Generated review mp4: {review_path}")
-                except Exception as e:
-                    self.log.error(f"Failed to generate review mp4: {e}")
+                # Ensure the instance has 'review' family to trigger ExtractReview
+                families = instance.data.setdefault("families", [])
+                if "review" not in families:
+                    families.append("review")
 
     def get_c4d_format(self, ext):
         formats = {

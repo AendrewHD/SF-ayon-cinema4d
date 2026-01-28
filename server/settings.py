@@ -8,6 +8,10 @@ from .create import (
     CreatePluginsModel,
     DEFAULT_CINEMA4D_CREATE_SETTINGS
 )
+from .review import (
+    ReviewPluginsModel,
+    DEFAULT_CINEMA4D_REVIEW_SETTINGS
+)
 
 class Cinema4DSettings(BaseSettingsModel):
     imageio: Cinema4DImageIOModel = SettingsField(
@@ -18,8 +22,13 @@ class Cinema4DSettings(BaseSettingsModel):
         default_factory=CreatePluginsModel,
         title="Create Plugins"
     )
+    review: ReviewPluginsModel = SettingsField(
+        default_factory=ReviewPluginsModel,
+        title="Review Plugins"
+    )
 
 DEFAULT_VALUES = {
     "imageio": DEFAULT_IMAGEIO_SETTINGS,
-    "create": DEFAULT_CINEMA4D_CREATE_SETTINGS
+    "create": DEFAULT_CINEMA4D_CREATE_SETTINGS,
+    "review": DEFAULT_CINEMA4D_REVIEW_SETTINGS
 }
