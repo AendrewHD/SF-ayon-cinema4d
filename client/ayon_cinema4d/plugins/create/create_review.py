@@ -8,7 +8,9 @@ from ayon_core.lib import (
 from ayon_cinema4d.api import (
     plugin,
     exporters,
+    lib,
 )
+import c4d
 
 
 class CreateReview(plugin.Cinema4DCreator):
@@ -18,6 +20,7 @@ class CreateReview(plugin.Cinema4DCreator):
     label = "Review"
     description = __doc__
     product_type = "review"
+    product_base_type = "review"
     icon = "video-camera"
     render_type = "viewport"
     image_format_enum = [
@@ -33,6 +36,10 @@ class CreateReview(plugin.Cinema4DCreator):
         - FPS, width and height default to the current product (task) settings
           so the resulting viewport render matches project standards.
         """
+        
+        # Collect cameras and stage objects from current document
+        doc = lib.active_document()
+        cameras_and_stages = self._get_cameras_and_stages(doc)
         
         # Collect basic animation attributes including handles and fps
         # Add resolution controls defaulting to AYON task attributes
@@ -91,7 +98,14 @@ class CreateReview(plugin.Cinema4DCreator):
             # Blank line
             UILabelDef(
                 label="   ",
-            ),  
+            ),
+            EnumDef(
+                "cameraSelection",
+                label="Camera / Stage",
+                items=cameras_and_stages,
+                default="viewport" if cameras_and_stages else "viewport",
+                tooltip="Select a camera or stage object for rendering, or use viewport"
+            ), 
             EnumDef(
                 "imageFormat",
                 label="Image Format",
@@ -245,6 +259,45 @@ class CreateReview(plugin.Cinema4DCreator):
         return defs
 
     # --- Convenience API -------------------------------------------------
+    def _get_cameras_and_stages(self, doc):
+        """Get list of cameras and stage objects from the document.
+
+        Returns a list of tuples (value, label) for EnumDef, with "viewport"
+        as default option.
+
+        Args:
+            doc: Cinema 4D document.
+
+        Returns:
+            List[Tuple[str, str]]: List of (id, name) tuples for dropdown.
+        """
+        items = [("viewport", "Viewport (Default)")]
+
+        if not doc:
+            return items
+
+        # Collect all cameras and stage objects. Use name-based unique
+        # values for EnumDef since some c4d.BaseObject implementations
+        # don't expose GetGlobalClassID(). If duplicate names exist we
+        # append an index to make the value unique.
+        name_counts = {}
+        if doc.GetFirstObject():
+            for obj in lib.iter_objects(doc.GetFirstObject()):
+                obj_type = obj.GetType()
+                if obj_type not in (c4d.Ocamera, c4d.Ostage, c4d.Orscamera):
+                    continue
+
+                obj_name = obj.GetName() or "<untitled>"
+                # count occurrences to disambiguate duplicate names
+                count = name_counts.get(obj_name, 0) + 1
+                name_counts[obj_name] = count
+
+                value = obj_name if count == 1 else f"{obj_name}#{count}"
+                label_prefix = "Camera" if obj_type == c4d.Ocamera or obj_type == c4d.Orscamera else "Stage"
+                items.append((value, f"{label_prefix}: {obj_name}"))
+
+        return items
+    
     def get_render_settings_from_context(self):
         """Return render settings from the current AYON context.
 

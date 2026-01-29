@@ -1,4 +1,5 @@
 import logging
+from typing import Callable, Dict, Iterator, List, Optional, Union
 
 import c4d
 
@@ -8,6 +9,9 @@ from ayon_core.pipeline import (
     get_current_task_name,
     AYON_CONTAINER_ID,
 )
+from ayon_core.pipeline.context_tools import (
+    get_current_task_entity
+)
 
 from . import lib
 
@@ -15,6 +19,36 @@ log = logging.getLogger("ayon_cinema4d")
 
 AYON_CONTAINERS = lib.AYON_CONTAINERS
 
+def get_frame_range(task_entity=None) -> Union[Dict[str, int], None]:
+    """Get the task entity's frame range and handles
+
+    Args:
+        task_entity (Optional[dict]): Task Entity.
+            When not provided defaults to current context task.
+
+    Returns:
+        Union[Dict[str, int], None]: Dictionary with
+            frame start, frame end, handle start, handle end.
+    """
+    # Set frame start/end
+    if task_entity is None:
+        task_entity = get_current_task_entity(fields={"attrib"})
+    task_attributes = task_entity["attrib"]
+    frame_start = int(task_attributes["frameStart"])
+    frame_end = int(task_attributes["frameEnd"])
+    handle_start = int(task_attributes["handleStart"])
+    handle_end = int(task_attributes["handleEnd"])
+    frame_start_handle = frame_start - handle_start
+    frame_end_handle = frame_end + handle_end
+
+    return {
+        "frameStart": frame_start,
+        "frameEnd": frame_end,
+        "handleStart": handle_start,
+        "handleEnd": handle_end,
+        "frameStartHandle": frame_start_handle,
+        "frameEndHandle": frame_end_handle,
+    }
 
 def parse_container(container):
     """Return the container node's full container data.

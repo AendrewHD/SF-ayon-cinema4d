@@ -8,7 +8,7 @@ from ayon_cinema4d.api import lib, exporters
 
 class Cinema4DExtractReview(publish.Extractor):
 
-    label = "Render Review"
+    label = "Extract Review"
     hosts = ["cinema4d"]
     families = ["review"]
 
