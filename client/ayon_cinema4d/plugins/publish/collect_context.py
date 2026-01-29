@@ -1,27 +1,20 @@
 import pyblish.api
 import c4d
 
-from ayon_cinema4d import api
+from ayon_cinema4d.api import workio, plugin
 
 
 class CollectContext(pyblish.api.ContextPlugin):
-    """Collect current context data.
-
-    Injects:
-        - current working file path
-        - active c4d document
-    """
+    """Inject the current working file into context"""
 
     order = pyblish.api.CollectorOrder - 0.5
-    label = "Collect Context"
+    label = "Cinema4D Current File"
     hosts = ["cinema4d"]
 
     def process(self, context):
-        # Collect current file
-        current_file = api.current_file()
+        """Inject the current working file"""
+        current_file = workio.current_file()
         context.data['currentFile'] = current_file
 
-        # Collect active document
+        """Inject the current document""" #cinema 4d specific
         context.data['doc'] = c4d.documents.GetActiveDocument()
-
-        self.log.debug(f"Collected current file: {current_file}")
